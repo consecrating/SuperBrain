@@ -1,157 +1,147 @@
 #!/usr/bin/env bash
-# ═══════════════════════════════════════════════════════════════════════════════
-# SuperBrain — bootstrap.sh
-#
-# THE ONLY SCRIPT YOU NEED. Clones all repos, installs everything, wires
-# environment, verifies integration. Run once per session.
-#
-# Usage:
-#   bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
-#
-# What it does:
-#   1. Sets up Python 3.11 runtime
-#   2. Clones all 6 repos (skips if already present)
-#   3. Installs All-Skills (44 design/UX/WP skills)
-#   4. Installs Claude-Power (16 engineering skills + steering + scripts)
-#   5. Installs AIBrain (intelligence layer + steering + skill)
-#   6. Installs ScrapeToolAi (pip, CLI)
-#   7. Installs goaaiseo-seo-adapter (pip, CLI)
-#   8. Links goaaiseo blueprint
-#   9. Sets all environment variables
-#   10. Verifies everything works
-#
-# Safe to re-run (idempotent). Takes ~30s on a fresh session.
-# ═══════════════════════════════════════════════════════════════════════════════
+# SuperBrain workspace bootstrap: clone, install, connect, and verify.
 set -euo pipefail
 
 SUPERBRAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKSPACE="/projects/sandbox"
-KIRO_DIR="/projects/.kiro"
-
-# ─── Python 3.11 ─────────────────────────────────────────────────────────────
+WORKSPACE="${SUPERBRAIN_WORKSPACE:-/projects/sandbox}"
+KIRO_DIR="${KIRO_DIR:-/projects/.kiro}"
+SKILLS_TARGET="$KIRO_DIR/skills"
+INTEGRATION_REPORT="$KIRO_DIR/all-skills-integration.json"
+MARKER="$SUPERBRAIN_DIR/.bootstrapped"
 export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
 
-echo ""
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  🧠 SuperBrain — Full Workspace Bootstrap                       ║"
-echo "╚══════════════════════════════════════════════════════════════════╝"
-echo ""
-echo "  Python: $(python3 --version 2>&1)"
-echo "  Workspace: $WORKSPACE"
-echo ""
+absolute_path() {
+    python3 -c 'import os,sys; print(os.path.abspath(sys.argv[1]))' "$1"
+}
 
-# ─── 1. Clone Repositories ──────────────────────────────────────────────────
+assert_safe_path() {
+    local label="$1"
+    local path
+    path="$(absolute_path "$2")"
+    local current="/"
+    local rest="${path#/}"
+    local part
+    IFS='/' read -r -a parts <<< "$rest"
+    for part in "${parts[@]}"; do
+        [ -n "$part" ] || continue
+        current="${current%/}/$part"
+        if [ -L "$current" ]; then
+            printf 'ERROR: refusing symlinked %s component: %s\n' "$label" "$current" >&2
+            return 1
+        fi
+    done
+}
+
+publish_artifacts() {
+    python3 "$SUPERBRAIN_DIR/scripts/skills_integration.py" publish-artifacts \
+        --lock-root "$KIRO_DIR" "$@"
+}
+
+WORKSPACE="$(absolute_path "$WORKSPACE")"
+KIRO_DIR="$(absolute_path "$KIRO_DIR")"
+SKILLS_TARGET="$KIRO_DIR/skills"
+INTEGRATION_REPORT="$KIRO_DIR/all-skills-integration.json"
+assert_safe_path "workspace" "$WORKSPACE"
+assert_safe_path "Kiro directory" "$KIRO_DIR"
+assert_safe_path "bootstrap marker" "$MARKER"
+
+# Invalidate prior success before any workspace mutation. A failed rerun must
+# never leave an old marker that can suppress the next bootstrap attempt.
+if [ -L "$MARKER" ]; then
+    printf 'ERROR: refusing symlinked bootstrap marker: %s\n' "$MARKER" >&2
+    exit 1
+fi
+rm -f "$MARKER"
+
+printf '\n╔══════════════════════════════════════════════════════════════════╗\n'
+printf '║  🧠 SuperBrain — Full Workspace Bootstrap                       ║\n'
+printf '╚══════════════════════════════════════════════════════════════════╝\n\n'
+printf '  Python: %s\n  Workspace: %s\n\n' "$(python3 --version 2>&1)" "$WORKSPACE"
 
 clone_repo() {
     local name="$1"
     local github="$2"
     local path="$WORKSPACE/$name"
-    
     if [ -d "$path/.git" ]; then
-        echo "  ✓ $name (already cloned)"
+        printf '  ✓ %s (already cloned)\n' "$name"
     else
-        echo "  ⏳ Cloning $name..."
-        git clone "https://github.com/$github.git" "$path" --quiet 2>/dev/null || {
-            echo "  ✗ Failed to clone $github"
+        printf '  ⏳ Cloning %s...\n' "$name"
+        if git clone --quiet "https://github.com/$github.git" "$path"; then
+            printf '  ✓ %s (cloned)\n' "$name"
+        else
+            printf '  ✗ %s clone failed\n' "$name" >&2
             return 1
-        }
-        echo "  ✓ $name (cloned)"
+        fi
     fi
 }
 
-echo "── 1/6 Cloning repositories ──"
-clone_repo "All-Skills"              "consecrating/All-Skills"
-clone_repo "Claude-Power"            "consecrating/Claude-Power"
-clone_repo "AIBrain"                 "consecrating/AIBrain"
-clone_repo "ScrapeToolAi"           "consecrating/ScrapeToolAi"
-clone_repo "goaaiseo-seo-adapter"   "consecrating/goaaiseo-seo-adapter"
-clone_repo "goaaiseo"               "consecrating/goaaiseo"
-echo ""
-
-# ─── 2. Create Kiro directories ─────────────────────────────────────────────
-
-mkdir -p "$KIRO_DIR/skills" "$KIRO_DIR/steering" "$KIRO_DIR/scripts" "$KIRO_DIR/hooks"
-
-# ─── 3. Install All-Skills (44 skills) ──────────────────────────────────────
-
-echo "── 2/6 Installing All-Skills (44 design/UX/WP skills) ──"
-if [ -x "$WORKSPACE/All-Skills/install.sh" ]; then
-    KIRO_SKILLS_DIR="$KIRO_DIR/skills" bash "$WORKSPACE/All-Skills/install.sh" 2>&1 | tail -1
-else
-    chmod +x "$WORKSPACE/All-Skills/install.sh"
-    KIRO_SKILLS_DIR="$KIRO_DIR/skills" bash "$WORKSPACE/All-Skills/install.sh" 2>&1 | tail -1
+printf '%s\n' '── 1/6 Cloning repositories ──'
+clone_repo "All-Skills" "consecrating/All-Skills"
+clone_repo "Claude-Power" "consecrating/Claude-Power"
+if ! clone_repo "AIBrain" "consecrating/AIBrain"; then
+    printf '  ⚠ AIBrain unavailable; optional intelligence synchronization disabled\n'
 fi
-echo ""
+clone_repo "ScrapeToolAi" "consecrating/ScrapeToolAi"
+clone_repo "goaaiseo-seo-adapter" "consecrating/goaaiseo-seo-adapter"
+clone_repo "goaaiseo" "consecrating/goaaiseo"
+printf '\n'
 
-# ─── 4. Install Claude-Power (16 engineering skills + steering + scripts) ────
+mkdir -p "$SKILLS_TARGET" "$KIRO_DIR/steering" "$KIRO_DIR/scripts" "$KIRO_DIR/hooks"
 
-echo "── 3/6 Installing Claude-Power (16 engineering skills) ──"
-if [ -d "$WORKSPACE/Claude-Power/.kiro/skills" ]; then
-    cp -r "$WORKSPACE/Claude-Power/.kiro/skills/"* "$KIRO_DIR/skills/" 2>/dev/null || true
-    echo "  ✓ Skills merged"
-fi
-if [ -d "$WORKSPACE/Claude-Power/.kiro/steering" ]; then
-    cp -r "$WORKSPACE/Claude-Power/.kiro/steering/"* "$KIRO_DIR/steering/" 2>/dev/null || true
-    echo "  ✓ Steering installed"
-fi
-if [ -d "$WORKSPACE/Claude-Power/.kiro/scripts" ]; then
-    cp -r "$WORKSPACE/Claude-Power/.kiro/scripts/"* "$KIRO_DIR/scripts/" 2>/dev/null || true
-    echo "  ✓ Scripts installed"
-fi
-echo ""
+printf '%s\n' '── 2/6 Installing exact connected skill ownership ──'
+python3 "$SUPERBRAIN_DIR/scripts/skills_integration.py" install \
+    --workspace "$WORKSPACE" \
+    --target "$SKILLS_TARGET" \
+    --report "$INTEGRATION_REPORT"
+printf '  ✓ All-Skills receipt owns 44; Claude-Power owns token-efficiency\n\n'
 
-# ─── 5. Install AIBrain (intelligence layer) ─────────────────────────────────
+printf '%s\n' '── 3/6 Installing Claude-Power steering and scripts ──'
+publish_artifacts --contents "$WORKSPACE/Claude-Power/.kiro/steering" "$KIRO_DIR/steering" \
+    --contents "$WORKSPACE/Claude-Power/.kiro/scripts" "$KIRO_DIR/scripts"
+printf '  ✓ Steering and scripts installed separately from skill ownership\n\n'
 
-echo "── 4/6 Installing AIBrain (intelligence layer) ──"
-if [ -x "$WORKSPACE/AIBrain/scripts/install.sh" ]; then
-    bash "$WORKSPACE/AIBrain/scripts/install.sh" 2>&1 | grep -E "^(✓|✅|⚠️)" || true
-else
-    # Manual install if script missing
-    if [ -f "$WORKSPACE/AIBrain/.kiro/steering/aibrain.md" ]; then
-        cp "$WORKSPACE/AIBrain/.kiro/steering/aibrain.md" "$KIRO_DIR/steering/"
+printf '%s\n' '── 4/6 Installing optional AIBrain integration ──'
+AIBRAIN_INSTALLER="$WORKSPACE/AIBrain/scripts/install.sh"
+if python3 "$SUPERBRAIN_DIR/scripts/skills_integration.py" check-safe-file --path "$AIBRAIN_INSTALLER" >/dev/null; then
+    if KIRO_DIR="$KIRO_DIR" bash "$AIBRAIN_INSTALLER"; then
+        printf '  ✓ Optional AIBrain integration installed\n'
+    else
+        printf '  ⚠ AIBrain installer failed; connected skill health remains valid\n'
     fi
-    if [ -d "$WORKSPACE/AIBrain/.kiro/skills/aibrain" ]; then
-        cp -r "$WORKSPACE/AIBrain/.kiro/skills/aibrain" "$KIRO_DIR/skills/"
+else
+    printf '  ⚠ AIBrain installer is absent; optional catalog synchronization was skipped\n'
+fi
+printf '\n'
+
+printf '%s\n' '── 5/6 Installing Python packages ──'
+if python3 -c "import scrapetoolai" >/dev/null 2>&1; then
+    printf '  ✓ scrapetoolai (already installed)\n'
+else
+    python3 -m pip install --quiet -e "$WORKSPACE/ScrapeToolAi"
+    printf '  ✓ scrapetoolai installed\n'
+fi
+if python3 -c "from gsa import models" >/dev/null 2>&1; then
+    printf '  ✓ goaaiseo-seo-adapter (already installed)\n'
+else
+    python3 -m pip install --quiet -e "$WORKSPACE/goaaiseo-seo-adapter"
+    printf '  ✓ goaaiseo-seo-adapter installed\n'
+fi
+printf '\n'
+
+printf '%s\n' '── 6/6 Installing SuperBrain artifacts ──'
+publish_artifacts \
+    --file "$SUPERBRAIN_DIR/.kiro/steering/superbrain.md" "$KIRO_DIR/steering/superbrain.md" \
+    --tree "$SUPERBRAIN_DIR/.kiro/skills/superbrain" "$KIRO_DIR/skills/superbrain"
+chmod +x "$KIRO_DIR/scripts/"*.sh
+find "$KIRO_DIR/skills" -type f -name '*.sh' -exec chmod +x {} +
+if [ -d "$WORKSPACE/AIBrain/scripts" ]; then
+    if ! find "$WORKSPACE/AIBrain/scripts" -maxdepth 1 -type f -name '*.sh' -exec chmod +x {} +; then
+        printf '  ⚠ Optional AIBrain script permission refresh failed\n'
     fi
-    echo "  ✓ AIBrain installed (manual)"
 fi
-echo ""
-
-# ─── 6. Install Python packages ──────────────────────────────────────────────
-
-echo "── 5/6 Installing Python packages ──"
-if python3 -c "import scrapetoolai" 2>/dev/null; then
-    echo "  ✓ scrapetoolai (already installed)"
-else
-    pip install -e "$WORKSPACE/ScrapeToolAi" --quiet 2>/dev/null
-    echo "  ✓ scrapetoolai installed"
-fi
-
-if python3 -c "from gsa import models" 2>/dev/null; then
-    echo "  ✓ goaaiseo-seo-adapter (already installed)"
-else
-    pip install -e "$WORKSPACE/goaaiseo-seo-adapter" --quiet 2>/dev/null
-    echo "  ✓ goaaiseo-seo-adapter installed"
-fi
-echo ""
-
-# ─── 7. Install SuperBrain steering (overwrites workspace-repos) ─────────────
-
-echo "── 6/6 Installing SuperBrain steering ──"
-cp "$SUPERBRAIN_DIR/.kiro/steering/superbrain.md" "$KIRO_DIR/steering/" 2>/dev/null || true
-cp -r "$SUPERBRAIN_DIR/.kiro/skills/superbrain" "$KIRO_DIR/skills/" 2>/dev/null || true
-echo "  ✓ SuperBrain steering + skill installed"
-echo ""
-
-# ─── 8. Post-install setup ───────────────────────────────────────────────────
-
-chmod +x "$KIRO_DIR/scripts/"*.sh 2>/dev/null || true
-find "$KIRO_DIR/skills" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-chmod +x "$WORKSPACE/AIBrain/scripts/"*.sh 2>/dev/null || true
 mkdir -p "$WORKSPACE/goaaiseo-seo-adapter/out"
 mkdir -p "$WORKSPACE/ScrapeToolAi/output" "$WORKSPACE/ScrapeToolAi/imports"
-
-# ─── 9. Environment Variables ────────────────────────────────────────────────
+printf '  ✓ SuperBrain steering and skill installed\n\n'
 
 export GOAAISEO_ROOT="$WORKSPACE/goaaiseo"
 export GOAAISEO_BLUEPRINT="$WORKSPACE/goaaiseo/docs/blueprint"
@@ -160,112 +150,36 @@ export GSA_SINK_PATH="$WORKSPACE/goaaiseo-seo-adapter/out/site.graph.json"
 export GSA_MIN_CONFIDENCE="0.7"
 export SCRAPETOOL_OUTPUT="$WORKSPACE/ScrapeToolAi/output"
 export SCRAPETOOL_IMPORTS="$WORKSPACE/ScrapeToolAi/imports"
-export KIRO_SKILLS_DIR="$KIRO_DIR/skills"
+export KIRO_SKILLS_DIR="$SKILLS_TARGET"
 export AIBRAIN_ROOT="$WORKSPACE/AIBrain"
 
-# Write env file for sourcing in future commands
-cat > "$SUPERBRAIN_DIR/.env" << EOF
-export PATH="/root/.pyenv/versions/3.11.15/bin:\$PATH"
-export GOAAISEO_ROOT="$WORKSPACE/goaaiseo"
-export GOAAISEO_BLUEPRINT="$WORKSPACE/goaaiseo/docs/blueprint"
-export GSA_SINK="jsonfile"
-export GSA_SINK_PATH="$WORKSPACE/goaaiseo-seo-adapter/out/site.graph.json"
-export GSA_MIN_CONFIDENCE="0.7"
-export SCRAPETOOL_OUTPUT="$WORKSPACE/ScrapeToolAi/output"
-export SCRAPETOOL_IMPORTS="$WORKSPACE/ScrapeToolAi/imports"
-export KIRO_SKILLS_DIR="$KIRO_DIR/skills"
-export AIBRAIN_ROOT="$WORKSPACE/AIBrain"
-EOF
+assert_safe_path "environment file" "$SUPERBRAIN_DIR/.env"
+ENV_TMP="$(mktemp "$SUPERBRAIN_DIR/.env.XXXXXX")"
+{
+    printf 'export PATH=%q:$PATH\n' "/root/.pyenv/versions/3.11.15/bin"
+    printf 'export GOAAISEO_ROOT=%q\n' "$WORKSPACE/goaaiseo"
+    printf 'export GOAAISEO_BLUEPRINT=%q\n' "$WORKSPACE/goaaiseo/docs/blueprint"
+    printf 'export GSA_SINK=%q\n' "jsonfile"
+    printf 'export GSA_SINK_PATH=%q\n' "$WORKSPACE/goaaiseo-seo-adapter/out/site.graph.json"
+    printf 'export GSA_MIN_CONFIDENCE=%q\n' "0.7"
+    printf 'export SCRAPETOOL_OUTPUT=%q\n' "$WORKSPACE/ScrapeToolAi/output"
+    printf 'export SCRAPETOOL_IMPORTS=%q\n' "$WORKSPACE/ScrapeToolAi/imports"
+    printf 'export KIRO_SKILLS_DIR=%q\n' "$SKILLS_TARGET"
+    printf 'export AIBRAIN_ROOT=%q\n' "$WORKSPACE/AIBrain"
+} > "$ENV_TMP"
+mv -f "$ENV_TMP" "$SUPERBRAIN_DIR/.env"
 
-# ─── 10. Verification ────────────────────────────────────────────────────────
+printf '%s\n' '── Final exact verification ──'
+SUPERBRAIN_WORKSPACE="$WORKSPACE" KIRO_DIR="$KIRO_DIR" bash "$SUPERBRAIN_DIR/scripts/verify.sh"
 
-echo "── Verifying installation ──"
-ERRORS=0
+# The marker is the final commit point. Any earlier failure exits under set -e,
+# leaving no success marker. The same-filesystem rename makes publication atomic.
+MARKER_TMP="$(mktemp "$SUPERBRAIN_DIR/.bootstrapped.XXXXXX")"
+printf 'verified\n' > "$MARKER_TMP"
+mv -f "$MARKER_TMP" "$MARKER"
 
-# Check repos exist
-for repo in All-Skills Claude-Power AIBrain ScrapeToolAi goaaiseo-seo-adapter goaaiseo; do
-    if [ -d "$WORKSPACE/$repo/.git" ]; then
-        printf "  ✓ %-25s cloned\n" "$repo"
-    else
-        printf "  ✗ %-25s MISSING\n" "$repo"
-        ERRORS=$((ERRORS + 1))
-    fi
-done
-
-# Check Python packages
-if python3 -c "import scrapetoolai" 2>/dev/null; then
-    echo "  ✓ scrapetoolai              importable"
-else
-    echo "  ✗ scrapetoolai              FAILED"
-    ERRORS=$((ERRORS + 1))
-fi
-if python3 -c "from gsa import models" 2>/dev/null; then
-    echo "  ✓ gsa                       importable"
-else
-    echo "  ✗ gsa                       FAILED"
-    ERRORS=$((ERRORS + 1))
-fi
-
-# Check CLIs
-if command -v gsa >/dev/null 2>&1; then
-    echo "  ✓ gsa CLI                   available"
-else
-    echo "  ✗ gsa CLI                   MISSING"
-    ERRORS=$((ERRORS + 1))
-fi
-if command -v scrapetool >/dev/null 2>&1; then
-    echo "  ✓ scrapetool CLI            available"
-else
-    echo "  ✗ scrapetool CLI            MISSING"
-    ERRORS=$((ERRORS + 1))
-fi
-
-# Check skills
-SKILL_COUNT=$(ls "$KIRO_DIR/skills" 2>/dev/null | wc -l)
-if [ "$SKILL_COUNT" -ge 50 ]; then
-    echo "  ✓ Kiro skills               $SKILL_COUNT active"
-else
-    echo "  ⚠ Kiro skills               only $SKILL_COUNT (expected 60+)"
-fi
-
-# Check AIBrain
-if [ -f "$KIRO_DIR/steering/aibrain.md" ] && [ -f "$KIRO_DIR/skills/aibrain/SKILL.md" ]; then
-    echo "  ✓ AIBrain                   steering + skill active"
-else
-    echo "  ✗ AIBrain                   NOT WIRED"
-    ERRORS=$((ERRORS + 1))
-fi
-
-# Check SuperBrain steering
-if [ -f "$KIRO_DIR/steering/superbrain.md" ]; then
-    echo "  ✓ SuperBrain                steering active"
-else
-    echo "  ⚠ SuperBrain                steering missing"
-fi
-
-echo ""
-
-# ─── Summary ─────────────────────────────────────────────────────────────────
-
-if [ "$ERRORS" -eq 0 ]; then
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║  ✅ SUPERBRAIN BOOTSTRAP COMPLETE                               ║"
-    echo "╠══════════════════════════════════════════════════════════════════╣"
-    echo "║                                                                  ║"
-    echo "║  Repos:    6 cloned & connected                                  ║"
-    echo "║  Skills:   $SKILL_COUNT active (design + engineering + brain)          ║"
-    echo "║  Packages: scrapetoolai + gsa installed                          ║"
-    echo "║  CLIs:     scrapetool, gsa                                       ║"
-    echo "║  Brain:    AIBrain persistent intelligence active                ║"
-    echo "║  Env:      All variables set (source .env to reload)             ║"
-    echo "║                                                                  ║"
-    echo "║  Everything is connected. Start working.                         ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
-else
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║  ⚠️  BOOTSTRAP COMPLETED WITH $ERRORS ERROR(S)                     ║"
-    echo "║  Re-run or check the failures above.                            ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
-fi
-
-exit $ERRORS
+printf '\n╔══════════════════════════════════════════════════════════════════╗\n'
+printf '║  ✅ SUPERBRAIN BOOTSTRAP COMPLETE                               ║\n'
+printf '╠══════════════════════════════════════════════════════════════════╣\n'
+printf '║  Exact skill ownership, packages, CLIs, and workspace verified. ║\n'
+printf '╚══════════════════════════════════════════════════════════════════╝\n'

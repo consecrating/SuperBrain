@@ -1,83 +1,63 @@
 ---
 name: superbrain
-description: "Master workspace orchestrator — auto-bootstraps all repos (All-Skills, Claude-Power, AIBrain, ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo) on session start. Activate when starting a session, when repos are missing, when packages fail to import, or when the workspace needs repair. Provides bootstrap, verify, and repair commands."
+description: "Master workspace orchestrator — bootstraps, exactly verifies, and repairs All-Skills/Claude-Power ownership plus AIBrain, ScrapeToolAi, gsa, and GOAAISEO wiring. Activate at session start or when connected-workspace health drifts."
 metadata:
-  version: "1.0"
+  version: "1.1"
   author: consecrating
 ---
 
 # SuperBrain — Workspace Orchestrator
 
-You are running in a SuperBrain-powered workspace. This means ALL repos should
-be present, installed, and connected. If they're not, fix it immediately.
+Use SuperBrain to install and verify the connected workspace without relying on directory counts or copy order.
 
-## Auto-Bootstrap Protocol
-
-At the START of every session:
+## Bootstrap and health
 
 ```bash
 export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
 bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
+bash /projects/sandbox/SuperBrain/scripts/verify.sh
 ```
 
-This is idempotent — safe to run even if everything is already installed.
+Bootstrap is idempotent. Its `.bootstrapped` marker is atomically published only after final verification succeeds.
 
-## What Gets Installed
+## Deterministic skills
 
-| Repo | What It Provides |
-|------|-----------------|
-| All-Skills | 44 Kiro skills (design, UX, WordPress, motion, SEO) |
-| Claude-Power | 16 Kiro skills (engineering, debugging, security, PRs) |
-| AIBrain | Persistent intelligence (memory, patterns, stack, decisions) |
-| ScrapeToolAi | `scrapetool` CLI + Python scraping framework |
-| goaaiseo-seo-adapter | `gsa` CLI + SEO normalization library |
-| goaaiseo | GOAAISEO blueprint (architecture reference) |
+| Source | Informational package count | Combined rule |
+|---|---:|---|
+| All-Skills | 45 | v2 receipt owns exactly 44 |
+| Claude-Power | 16 | owns the one overlap, `token-efficiency` |
+| Unique between packs | 60 | verified by identities, not directory totals |
+| AIBrain / SuperBrain | +1 each when installed | separate workspace skills |
 
-## Self-Healing
-
-If anything is broken mid-session:
+Run the shared helper directly when diagnosing ownership:
 
 ```bash
-# Quick fix — re-run bootstrap
-bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
-
-# Just verify without reinstalling
-bash /projects/sandbox/SuperBrain/scripts/verify.sh
-
-# Repair a specific repo
-bash /projects/sandbox/SuperBrain/scripts/repair.sh <repo-name>
+python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py install
+python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py verify
 ```
 
-## Available After Bootstrap
+The helper validates the public All-Skills bundle/catalog and source validator, uses public `install.sh` lifecycle commands, checks the exact receipt folder set and public check health, and proves complete Claude-Power source/destination tree equality. Foreign unrelated skill directories are permitted.
 
-### CLIs
+All-Skills standalone installation remains unchanged and includes all 45. Combined migration relinquishes All-Skills' `token-efficiency` receipt entry through its public uninstall selection before Claude-Power publication.
+
+## Optional intelligence synchronization
+
+If AIBrain is available, successful combined installation best-effort ingests the current All-Skills catalog and compact integration report with explicit kinds/scopes. Missing or unhealthy AIBrain synchronization is a warning, never a connected-skill health failure.
+
+## Repair
+
+```bash
+bash /projects/sandbox/SuperBrain/scripts/repair.sh skills
+bash /projects/sandbox/SuperBrain/scripts/repair.sh packages
+bash /projects/sandbox/SuperBrain/scripts/repair.sh aibrain
+bash /projects/sandbox/SuperBrain/scripts/repair.sh auto
+```
+
+## Available services
+
 - `scrapetool fetch|extract|crawl|import|search|mcp-server`
 - `gsa ingest|analyze|doctor|serve`
 - `bash /projects/sandbox/AIBrain/scripts/brain.sh status|recall|decide|correct`
+- GOAAISEO blueprint under `/projects/sandbox/goaaiseo/docs/blueprint`
 
-### Python Libraries
-```python
-from scrapetoolai.fetchers.http_fetcher import http_fetch, SimplePage
-from scrapetoolai.fetchers.escalation import auto_fetch
-from scrapetoolai.organizer.search import search_collection
-
-from gsa.models import GraphNode, IssueRecord, ActionCandidate, IngestResult
-from gsa.normalize import ingest_seo_report
-from gsa.sinks import get_sink
-from gsa.config import Settings
-```
-
-### Environment Variables
-All set automatically. Source them with:
-```bash
-source /projects/sandbox/SuperBrain/.env
-```
-
-## When to Activate This Skill
-
-- ✅ Session start (bootstrap check)
-- ✅ Import errors (package not installed)
-- ✅ Command not found (CLI missing)
-- ✅ Skill not recognized (not installed)
-- ✅ "Workspace is broken" / repair needed
-- ✅ Need to understand how repos connect
+`/projects/sandbox/connect-all.sh` is a legacy bypass and is not health evidence.

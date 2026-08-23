@@ -1,62 +1,70 @@
 {
   "name": "SuperBrain",
-  "version": "1.0.0",
-  "description": "Auto-bootstrap manifest — declares all repos, install order, and verification checks.",
+  "version": "1.1.0",
+  "description": "Connected-workspace manifest with exact All-Skills v2 receipt and external-owner verification.",
   "author": "consecrating",
   "workspace": "/projects/sandbox",
   "python": "/root/.pyenv/versions/3.11.15/bin",
-
+  "skill_ownership": {
+    "informational_counts_only": true,
+    "all_skills_packaged": 45,
+    "all_skills_combined_receipt_owned": 44,
+    "claude_power_packaged": 16,
+    "claude_power_overlap_owned": ["token-efficiency"],
+    "unique_between_packs": 60,
+    "additional_when_installed": ["aibrain", "superbrain"],
+    "health_source": "/projects/.kiro/all-skills-integration.json"
+  },
   "repositories": [
     {
       "name": "All-Skills",
       "github": "consecrating/All-Skills",
-      "purpose": "44 design/UX/WordPress Kiro skills",
-      "install": "KIRO_SKILLS_DIR=/projects/.kiro/skills ./install.sh",
-      "verify": "test $(ls /projects/.kiro/skills | wc -l) -ge 40",
+      "purpose": "45 packaged design/UX/WordPress skills; 44 receipt-owned in combined installs",
+      "install": "python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py install",
+      "verify": "python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py verify",
       "priority": 1
     },
     {
       "name": "Claude-Power",
       "github": "consecrating/Claude-Power",
-      "purpose": "16 engineering Kiro skills + steering + scripts",
-      "install": "cp -r .kiro/skills/* /projects/.kiro/skills/ && cp -r .kiro/steering/* /projects/.kiro/steering/ && cp -r .kiro/scripts/* /projects/.kiro/scripts/",
-      "verify": "test -f /projects/.kiro/skills/token-efficiency/SKILL.md",
+      "purpose": "16 engineering skills; canonical token-efficiency owner in combined installs, plus steering and scripts",
+      "install": "python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py install --workspace /projects/sandbox --target /projects/.kiro/skills --report /projects/.kiro/all-skills-integration.json",
+      "verify": "python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py verify --workspace /projects/sandbox --target /projects/.kiro/skills --report /projects/.kiro/all-skills-integration.json",
       "priority": 2
     },
     {
       "name": "AIBrain",
       "github": "consecrating/AIBrain",
-      "purpose": "Persistent intelligence layer — memory, patterns, stack, self-healing",
+      "purpose": "Optional persistent intelligence and best-effort catalog/health-report synchronization",
       "install": "bash scripts/install.sh",
-      "verify": "test -f /projects/.kiro/skills/aibrain/SKILL.md && test -f /projects/.kiro/steering/aibrain.md",
+      "verify": "bash scripts/brain.sh doctor",
       "priority": 3
     },
     {
       "name": "ScrapeToolAi",
       "github": "consecrating/ScrapeToolAi",
       "purpose": "Stealth web scraping framework + AI extraction + MCP server",
-      "install": "pip install -e .",
-      "verify": "python3 -c 'import scrapetoolai' 2>/dev/null",
+      "install": "python3 -m pip install -e .",
+      "verify": "python3 -c 'import scrapetoolai'",
       "priority": 4
     },
     {
       "name": "goaaiseo-seo-adapter",
       "github": "consecrating/goaaiseo-seo-adapter",
       "purpose": "Integration adapter: claude-seo → GOAAISEO graph model",
-      "install": "pip install -e .",
-      "verify": "python3 -c 'from gsa import models, normalize' 2>/dev/null",
+      "install": "python3 -m pip install -e .",
+      "verify": "python3 -c 'from gsa import models, normalize'",
       "priority": 5
     },
     {
       "name": "goaaiseo",
       "github": "consecrating/goaaiseo",
       "purpose": "Autonomous SEO Operating System (blueprint/architecture)",
-      "install": "echo 'Blueprint repo — no install needed'",
+      "install": "test -d docs/blueprint",
       "verify": "test -d docs/blueprint",
       "priority": 6
     }
   ],
-
   "environment": {
     "PATH_PREFIX": "/root/.pyenv/versions/3.11.15/bin",
     "GOAAISEO_ROOT": "/projects/sandbox/goaaiseo",
@@ -69,10 +77,9 @@
     "KIRO_SKILLS_DIR": "/projects/.kiro/skills",
     "AIBRAIN_ROOT": "/projects/sandbox/AIBrain"
   },
-
   "post_install": [
-    "chmod +x /projects/.kiro/scripts/*.sh 2>/dev/null || true",
-    "find /projects/.kiro/skills -name '*.sh' -exec chmod +x {} \\; 2>/dev/null || true",
+    "chmod +x /projects/.kiro/scripts/*.sh",
+    "find /projects/.kiro/skills -type f -name '*.sh' -exec chmod +x {} +",
     "mkdir -p /projects/sandbox/goaaiseo-seo-adapter/out",
     "mkdir -p /projects/sandbox/ScrapeToolAi/output /projects/sandbox/ScrapeToolAi/imports"
   ]

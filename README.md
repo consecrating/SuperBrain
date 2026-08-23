@@ -1,200 +1,94 @@
 # ⚡ SuperBrain
 
-**The ONLY repo you need to connect.** SuperBrain auto-installs and wires your entire workspace — all 6 repos, 61 skills, 2 Python packages, 2 CLIs, and persistent intelligence — in a single bootstrap.
+SuperBrain bootstraps and verifies the connected SEO, scraping, skills, and intelligence workspace from one repository.
 
-> Connect `consecrating/SuperBrain` → start a session → everything is ready.
-
----
-
-## What It Does
-
-When SuperBrain is the only repo connected to a Kiro session:
-
-1. **Detects** that other repos are missing
-2. **Clones** all 6 repositories automatically
-3. **Installs** 61 Kiro skills (design + engineering + AI brain)
-4. **Installs** Python packages (ScrapeToolAi, goaaiseo-seo-adapter)
-5. **Wires** environment variables, CLIs, and steering files
-6. **Activates** AIBrain persistent intelligence
-7. **Verifies** everything works
-8. **Self-heals** if anything breaks
-
-All in ~30 seconds. No manual setup. No copy-pasting. No "install X first."
-
----
-
-## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  SESSION START — SuperBrain is the only connected repo                  │
-│                                                                          │
-│  .kiro/steering/superbrain.md (always-on) instructs Kiro:               │
-│  "Run bootstrap.sh immediately"                                          │
-│                                                                          │
-│  .kiro/hooks/auto-bootstrap.json (SessionStart trigger):                │
-│  Automatically runs bootstrap.sh before any user interaction             │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  bootstrap.sh executes:                                                  │
-│                                                                          │
-│  1. git clone consecrating/All-Skills         → 44 design skills         │
-│  2. git clone consecrating/Claude-Power       → 16 engineering skills    │
-│  3. git clone consecrating/AIBrain            → persistent intelligence  │
-│  4. git clone consecrating/ScrapeToolAi       → scraping framework       │
-│  5. git clone consecrating/goaaiseo-seo-adapter → SEO adapter            │
-│  6. git clone consecrating/goaaiseo           → SEO OS blueprint         │
-│                                                                          │
-│  7. Install All-Skills (45 skills → /projects/.kiro/skills/)             │
-│  8. Install Claude-Power (16 skills + steering + scripts)                │
-│  9. Install AIBrain (brain skill + steering)                             │
-│  10. pip install -e ScrapeToolAi (scrapetool CLI)                        │
-│  11. pip install -e goaaiseo-seo-adapter (gsa CLI)                       │
-│  12. Set environment variables + write .env                              │
-│  13. Verify everything → report status                                   │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Quick Start
-
-### Option A: Just connect this repo (recommended)
-
-In Kiro Web, connect `consecrating/SuperBrain` to your session.
-The steering file instructs Kiro to run bootstrap automatically.
-
-### Option B: Manual trigger
+## Quick start
 
 ```bash
 bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
 ```
 
-### Option C: From scratch (new machine)
+Bootstrap clones missing repositories, installs the two Python packages and CLIs, publishes Kiro artifacts, performs exact connected-skill verification, and atomically creates `.bootstrapped` only after every required check succeeds.
+
+## Deterministic skill ownership
+
+All-Skills and Claude-Power overlap on `token-efficiency`. SuperBrain resolves that overlap from All-Skills' public catalog metadata rather than installation order:
+
+| Source | Packaged | Combined ownership |
+|---|---:|---|
+| All-Skills | 45 | Its v2 receipt owns exactly 44 |
+| Claude-Power | 16 | Owns its complete pack, including the one declared overlap, `token-efficiency` |
+| Unique between both packs | 60 | 44 All-Skills-only + 16 Claude-Power |
+| AIBrain and SuperBrain | 1 each when installed | Additional workspace skills |
+
+These counts are informational, not health invariants. Health comes from `scripts/skills_integration.py verify`, which proves:
+
+- `bundle.json` and `catalog/skills.json` identities, count, manifest digest, and packaged tree checksums;
+- `python3 scripts/all_skills.py validate --json` reports zero errors (warnings are preserved);
+- the All-Skills v2 receipt has the current schema, bundle/version/manifest, and exactly the 44 computed All-Skills-owned folders;
+- public `install.sh check --json` reports `healthy`;
+- Claude-Power source and installed trees have identical complete path sets and deterministic digests, including its canonical `token-efficiency` tree.
+
+Unrelated foreign skill directories are allowed and never used to infer health. The compact current report is written atomically to `/projects/.kiro/all-skills-integration.json` by default.
+
+All-Skills remains standalone-compatible: running its no-argument `install.sh` outside the combined SuperBrain flow installs all 45 skills, including its standalone `token-efficiency` copy. During migration from such an install, SuperBrain uses All-Skills' public uninstall selection to relinquish that one receipt entry before publishing Claude-Power's canonical tree.
+
+## Integration commands
 
 ```bash
-git clone https://github.com/consecrating/SuperBrain.git
-cd SuperBrain
-bash scripts/bootstrap.sh
+# Additive, idempotent combined install
+python3 scripts/skills_integration.py install
+
+# Exact read-only verification (apart from atomically refreshing the report)
+python3 scripts/skills_integration.py verify
+
+# Explicit paths for tests or alternate workspaces
+python3 scripts/skills_integration.py verify \
+  --workspace /path/to/workspace \
+  --target /path/to/.kiro/skills \
+  --report /path/to/health.json
 ```
 
----
+The helper is Python-standard-library-only and consumes only All-Skills' public JSON and CLI contracts; it does not import All-Skills modules. Install and verify hold All-Skills' exact `.<target>.all-skills.lock` for the complete integration transaction and pass that descriptor to every public lifecycle/check subprocess through `ALL_SKILLS_LOCK_FD`. Rollback uses only captured receipt states; unexplained receipt identities fail closed.
 
-## What You Get After Bootstrap
+Bootstrap and repair also delegate file/tree publication to the helper's internal `publish-artifacts` command. It serializes both scripts under one Kiro-root lock, stages trees on the destination filesystem, fsyncs a recovery journal before renaming a live tree, recovers interrupted prepared transactions on the next call, and keeps individual file replacement atomic.
 
-### 61 Kiro Skills
+## Optional AIBrain synchronization
 
-| Source | Count | Focus |
-|--------|-------|-------|
-| All-Skills | 44 | Design, UX, WordPress, SEO, motion |
-| Claude-Power | 16 | Engineering, debugging, security, refactoring |
-| AIBrain | 1 | Persistent intelligence layer |
+After a successful combined install, the helper checks for `AIBrain/scripts/brain.sh`. When available, it best-effort ingests the current All-Skills catalog (`kind=catalog`, `scope=all-skills`) and compact integration report (`kind=integration-health`, `scope=superbrain`), then rebuilds a stale index. AIBrain absence or synchronization failure is reported as a warning and never changes exact skill health. All-Skills does not call or import AIBrain.
 
-### 2 Python Packages
+## Workspace scripts
 
-| Package | CLI | Purpose |
-|---------|-----|---------|
-| scrapetoolai 1.0 | `scrapetool` | Stealth web scraping + AI extraction |
-| goaaiseo-seo-adapter 0.1 | `gsa` | SEO report normalization |
-
-### Persistent Intelligence (AIBrain)
-
-- **Memory** — never forgets decisions, corrections, or context
-- **Stack registry** — never suggests outdated packages
-- **Pattern library** — uses YOUR proven code patterns
-- **Self-healing** — learns from mistakes, never repeats them
-
-### Environment Variables
-
-All set automatically. Available via `source /projects/sandbox/SuperBrain/.env`
-
----
-
-## Scripts
-
-| Script | Purpose | When to Use |
-|--------|---------|-------------|
-| `scripts/bootstrap.sh` | Full install + verify | Session start, fresh workspace |
-| `scripts/verify.sh` | Health check (no changes) | "Is everything working?" |
-| `scripts/repair.sh` | Fix broken components | Something stopped working |
-| `scripts/workspace-setup.sh` | Load env vars only | Prefix commands with env |
-
----
-
-## Self-Healing
-
-SuperBrain can repair itself:
+| Script | Purpose |
+|---|---|
+| `scripts/bootstrap.sh` | Full install, exact final verification, atomic success marker |
+| `scripts/skills_integration.py` | Deterministic All-Skills/Claude-Power install and verification |
+| `scripts/verify.sh` | Whole-workspace health check without reinstalling |
+| `scripts/repair.sh` | Repair exact skills, packages, repositories, or AIBrain wiring |
+| `scripts/workspace-setup.sh` | Load environment variables |
 
 ```bash
-# Everything broke? Full re-bootstrap (idempotent)
-bash scripts/bootstrap.sh
-
-# Just check health
 bash scripts/verify.sh
-
-# Fix specific thing
-bash scripts/repair.sh All-Skills    # re-install skills
-bash scripts/repair.sh packages      # re-install pip packages
-bash scripts/repair.sh aibrain       # re-wire intelligence
-bash scripts/repair.sh auto          # detect and fix all issues
+bash scripts/repair.sh skills
+bash scripts/repair.sh packages
+bash scripts/repair.sh aibrain
+bash scripts/repair.sh auto
 ```
 
----
+`/projects/sandbox/connect-all.sh` is a legacy bypass outside this repository. It is not an ownership or verification contract and must not be used to determine connected-workspace health.
 
-## File Structure
+## Managed repositories
 
-```
-SuperBrain/
-├── README.md                           # This file
-├── manifest.json                       # Declarative repo + install spec
-├── .env                                # Generated env vars (after bootstrap)
-├── .gitignore
-├── LICENSE
-├── scripts/
-│   ├── bootstrap.sh                   # THE master installer
-│   ├── verify.sh                      # Health check
-│   ├── repair.sh                      # Fix broken things
-│   └── workspace-setup.sh            # Env vars only (source-able)
-└── .kiro/
-    ├── steering/
-    │   └── superbrain.md              # Always-on: "run bootstrap at session start"
-    ├── skills/
-    │   └── superbrain/
-    │       └── SKILL.md               # Orchestration skill
-    └── hooks/
-        └── auto-bootstrap.json        # SessionStart hook (auto-trigger)
-```
+| Repository | Purpose |
+|---|---|
+| All-Skills | Versioned design/UX/WordPress skills bundle and public lifecycle |
+| Claude-Power | Engineering skills, steering, and scripts |
+| AIBrain | Optional persistent local intelligence |
+| ScrapeToolAi | Web scraping framework and `scrapetool` CLI |
+| goaaiseo-seo-adapter | SEO normalization and `gsa` CLI |
+| goaaiseo | Autonomous SEO OS blueprint |
 
----
-
-## The Promise
-
-**One repo. One connection. Full power.**
-
-No more:
-- "Install X first"
-- "Set up Y manually"  
-- "Run these 15 commands"
-- "I forgot what was set up last time"
-
-Connect SuperBrain → start working.
-
----
-
-## Repos Managed
-
-| Repo | GitHub | What |
-|------|--------|------|
-| All-Skills | consecrating/All-Skills | 44 Kiro skills (design/UX/WP) |
-| Claude-Power | consecrating/Claude-Power | 16 Kiro skills (engineering) |
-| AIBrain | consecrating/AIBrain | Persistent intelligence layer |
-| ScrapeToolAi | consecrating/ScrapeToolAi | Web scraping framework |
-| goaaiseo-seo-adapter | consecrating/goaaiseo-seo-adapter | SEO adapter (gsa) |
-| goaaiseo | consecrating/goaaiseo | Autonomous SEO OS blueprint |
-
----
+Environment variables are written to `/projects/sandbox/SuperBrain/.env` after bootstrap.
 
 ## License
 
