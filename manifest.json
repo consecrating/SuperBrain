@@ -1,0 +1,79 @@
+{
+  "name": "SuperBrain",
+  "version": "1.0.0",
+  "description": "Auto-bootstrap manifest — declares all repos, install order, and verification checks.",
+  "author": "consecrating",
+  "workspace": "/projects/sandbox",
+  "python": "/root/.pyenv/versions/3.11.15/bin",
+
+  "repositories": [
+    {
+      "name": "All-Skills",
+      "github": "consecrating/All-Skills",
+      "purpose": "44 design/UX/WordPress Kiro skills",
+      "install": "KIRO_SKILLS_DIR=/projects/.kiro/skills ./install.sh",
+      "verify": "test $(ls /projects/.kiro/skills | wc -l) -ge 40",
+      "priority": 1
+    },
+    {
+      "name": "Claude-Power",
+      "github": "consecrating/Claude-Power",
+      "purpose": "16 engineering Kiro skills + steering + scripts",
+      "install": "cp -r .kiro/skills/* /projects/.kiro/skills/ && cp -r .kiro/steering/* /projects/.kiro/steering/ && cp -r .kiro/scripts/* /projects/.kiro/scripts/",
+      "verify": "test -f /projects/.kiro/skills/token-efficiency/SKILL.md",
+      "priority": 2
+    },
+    {
+      "name": "AIBrain",
+      "github": "consecrating/AIBrain",
+      "purpose": "Persistent intelligence layer — memory, patterns, stack, self-healing",
+      "install": "bash scripts/install.sh",
+      "verify": "test -f /projects/.kiro/skills/aibrain/SKILL.md && test -f /projects/.kiro/steering/aibrain.md",
+      "priority": 3
+    },
+    {
+      "name": "ScrapeToolAi",
+      "github": "consecrating/ScrapeToolAi",
+      "purpose": "Stealth web scraping framework + AI extraction + MCP server",
+      "install": "pip install -e .",
+      "verify": "python3 -c 'import scrapetoolai' 2>/dev/null",
+      "priority": 4
+    },
+    {
+      "name": "goaaiseo-seo-adapter",
+      "github": "consecrating/goaaiseo-seo-adapter",
+      "purpose": "Integration adapter: claude-seo → GOAAISEO graph model",
+      "install": "pip install -e .",
+      "verify": "python3 -c 'from gsa import models, normalize' 2>/dev/null",
+      "priority": 5
+    },
+    {
+      "name": "goaaiseo",
+      "github": "consecrating/goaaiseo",
+      "purpose": "Autonomous SEO Operating System (blueprint/architecture)",
+      "install": "echo 'Blueprint repo — no install needed'",
+      "verify": "test -d docs/blueprint",
+      "priority": 6
+    }
+  ],
+
+  "environment": {
+    "PATH_PREFIX": "/root/.pyenv/versions/3.11.15/bin",
+    "GOAAISEO_ROOT": "/projects/sandbox/goaaiseo",
+    "GOAAISEO_BLUEPRINT": "/projects/sandbox/goaaiseo/docs/blueprint",
+    "GSA_SINK": "jsonfile",
+    "GSA_SINK_PATH": "/projects/sandbox/goaaiseo-seo-adapter/out/site.graph.json",
+    "GSA_MIN_CONFIDENCE": "0.7",
+    "SCRAPETOOL_OUTPUT": "/projects/sandbox/ScrapeToolAi/output",
+    "SCRAPETOOL_IMPORTS": "/projects/sandbox/ScrapeToolAi/imports",
+    "KIRO_SKILLS_DIR": "/projects/.kiro/skills",
+    "AIBRAIN_ROOT": "/projects/sandbox/AIBrain"
+  },
+
+  "post_install": [
+    "chmod +x /projects/.kiro/scripts/*.sh 2>/dev/null || true",
+    "find /projects/.kiro/skills -name '*.sh' -exec chmod +x {} \\; 2>/dev/null || true",
+    "mkdir -p /projects/sandbox/goaaiseo-seo-adapter/out",
+    "mkdir -p /projects/sandbox/ScrapeToolAi/output /projects/sandbox/ScrapeToolAi/imports"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "SuperBrain Auto-Bootstrap",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "command",
+        "command": "export PATH=\"/root/.pyenv/versions/3.11.15/bin:$PATH\" && bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh 2>&1 | tail -30"
+      }
+    }
+  ]
+}
