@@ -1,77 +1,60 @@
 ---
 inclusion: always
-description: "SuperBrain — auto-bootstrap orchestrator. On EVERY session start, ensures all repos are cloned, installed, and connected. This is the ONLY repo you need to connect."
+description: "SuperBrain — deterministic connected-workspace bootstrap, verification, and repair orchestrator."
 ---
 
 # SuperBrain Protocol
 
-SuperBrain is the master orchestrator. When this repo is connected to a Kiro session,
-ALL other repos must be present and operational.
+SuperBrain is the workspace orchestrator. When connected, required repositories and integrations must be present and verifiably healthy.
 
-## At Session Start — AUTO-BOOTSTRAP
+## Session start
 
-**IMMEDIATELY** on session start, before doing anything else:
-
-1. Check if bootstrap has already run: `test -f /projects/sandbox/SuperBrain/.bootstrapped`
-2. If NOT bootstrapped, run:
+1. Check `test -f /projects/sandbox/SuperBrain/.bootstrapped`.
+2. If absent, run:
    ```bash
    bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
    ```
-3. This automatically:
-   - Clones All-Skills, Claude-Power, AIBrain, ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo
-   - Installs 61 Kiro skills (44 design + 16 engineering + superbrain)
-   - Installs Python packages (scrapetoolai, gsa)
-   - Activates AIBrain persistent intelligence
-   - Sets all environment variables
-   - Verifies everything works
+3. The marker is created atomically only after exact skill ownership and all required workspace checks pass.
 
-## After Bootstrap — Full Power Available
+## Skill ownership contract
 
-Once bootstrapped, you have:
-- **61 Kiro skills** active
-- **AIBrain** persistent intelligence (memory, patterns, stack registry, banned list)
-- **ScrapeToolAi** for stealth web scraping (`scrapetool` CLI)
-- **gsa** for SEO analysis normalization (`gsa` CLI)
-- **GOAAISEO** blueprint for architecture reference
-- All environment variables set
+- All-Skills packages 45 skills.
+- In a combined workspace, its v2 receipt owns exactly 44.
+- Claude-Power packages 16 and is the catalog-declared canonical owner of the one overlap, `token-efficiency`.
+- The packs contain 60 unique identities; AIBrain and SuperBrain add one each when installed.
+- Counts are informational only. Never use a total directory count as health evidence.
+- Exact health is the catalog, receipt, public All-Skills check, and Claude-Power source-tree digest report produced by `scripts/skills_integration.py verify`.
+- Unrelated foreign skill directories are allowed.
 
-## Environment (always prefix commands with)
+All-Skills' no-argument standalone installer still installs all 45. SuperBrain's combined helper selects the 44 non-external entries and uses the public All-Skills uninstall lifecycle when migrating a receipt that owns `token-efficiency`.
+
+## Optional AIBrain synchronization
+
+After successful skill integration, SuperBrain best-effort ingests the All-Skills catalog and compact health report when `AIBrain/scripts/brain.sh` exists. AIBrain absence or synchronization failure is a warning, not a skill-health failure. All-Skills remains independent of AIBrain.
+
+## Commands
 
 ```bash
 export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
-```
 
-Or source the generated env file:
-```bash
-source /projects/sandbox/SuperBrain/.env
-```
-
-## Quick Reference
-
-```bash
-# Re-bootstrap if anything breaks
 bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
-
-# Check status
 bash /projects/sandbox/SuperBrain/scripts/verify.sh
+bash /projects/sandbox/SuperBrain/scripts/repair.sh skills
 
-# AIBrain commands
+python3 /projects/sandbox/SuperBrain/scripts/skills_integration.py verify
+
 bash /projects/sandbox/AIBrain/scripts/brain.sh status
-bash /projects/sandbox/AIBrain/scripts/brain.sh recall "topic"
-
-# Scraping
 scrapetool fetch https://example.com
-scrapetool extract https://example.com --what "data"
-
-# SEO adapter
-gsa ingest report.json --site https://example.com --site-id tenant-1
 gsa doctor
 ```
 
-## The Contract
+`/projects/sandbox/connect-all.sh` is a legacy bypass and never defines health.
 
-1. If repos are missing → clone them automatically
-2. If packages aren't installed → install them automatically
-3. If skills aren't active → install them automatically
-4. If AIBrain isn't wired → wire it automatically
-5. NEVER ask the user to manually set up anything — just do it
+## Contract
+
+1. Clone missing managed repositories automatically.
+2. Install missing packages automatically.
+3. Use public All-Skills v2 contracts and deterministic external ownership.
+4. Propagate required installation and verification failures.
+5. Never publish `.bootstrapped` after partial failure.
+6. Never ask the user to perform setup that SuperBrain can safely perform itself.

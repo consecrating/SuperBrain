@@ -1,148 +1,111 @@
 #!/usr/bin/env bash
-# ═══════════════════════════════════════════════════════════════════════════════
-# verify.sh — Quick health check for the entire workspace
-#
-# Checks all repos, packages, skills, and wiring without reinstalling anything.
-# Exit 0 = all good, Exit 1 = issues found.
-# ═══════════════════════════════════════════════════════════════════════════════
+# Verify the connected workspace without reinstalling or counting directories.
 set -uo pipefail
 
+SUPERBRAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WORKSPACE="${SUPERBRAIN_WORKSPACE:-/projects/sandbox}"
+KIRO_DIR="${KIRO_DIR:-/projects/.kiro}"
+SKILLS_TARGET="$KIRO_DIR/skills"
+INTEGRATION_REPORT="$KIRO_DIR/all-skills-integration.json"
 export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
-WORKSPACE="/projects/sandbox"
-KIRO_DIR="/projects/.kiro"
 
-echo ""
-echo "🔍 SuperBrain — Workspace Verification"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
+printf '\n🔍 SuperBrain — Workspace Verification\n'
+printf '%s\n\n' '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
 ERRORS=0
 WARNINGS=0
 
-# ─── Repositories ────────────────────────────────────────────────────────────
-
-echo "📦 Repositories:"
-for repo in All-Skills Claude-Power AIBrain ScrapeToolAi goaaiseo-seo-adapter goaaiseo SuperBrain; do
+printf '📦 Repositories:\n'
+for repo in All-Skills Claude-Power ScrapeToolAi goaaiseo-seo-adapter goaaiseo SuperBrain; do
     if [ -d "$WORKSPACE/$repo/.git" ]; then
-        printf "  ✓ %-25s present\n" "$repo"
+        printf '  ✓ %-25s present\n' "$repo"
     else
-        printf "  ✗ %-25s MISSING\n" "$repo"
+        printf '  ✗ %-25s MISSING\n' "$repo"
         ERRORS=$((ERRORS + 1))
     fi
 done
-echo ""
+printf '\n'
 
-# ─── Python Packages ────────────────────────────────────────────────────────
-
-echo "🐍 Python Packages:"
-if python3 -c "import scrapetoolai" 2>/dev/null; then
-    echo "  ✓ scrapetoolai              installed"
+printf '🐍 Python packages and CLIs:\n'
+if python3 -c "import scrapetoolai" >/dev/null 2>&1; then
+    printf '  ✓ scrapetoolai              importable\n'
 else
-    echo "  ✗ scrapetoolai              NOT INSTALLED"
+    printf '  ✗ scrapetoolai              NOT IMPORTABLE\n'
     ERRORS=$((ERRORS + 1))
 fi
-if python3 -c "from gsa import models, normalize, sinks" 2>/dev/null; then
-    echo "  ✓ goaaiseo-seo-adapter      installed"
+if python3 -c "from gsa import models, normalize, sinks" >/dev/null 2>&1; then
+    printf '  ✓ goaaiseo-seo-adapter      importable\n'
 else
-    echo "  ✗ goaaiseo-seo-adapter      NOT INSTALLED"
+    printf '  ✗ goaaiseo-seo-adapter      NOT IMPORTABLE\n'
     ERRORS=$((ERRORS + 1))
 fi
-echo ""
-
-# ─── CLIs ────────────────────────────────────────────────────────────────────
-
-echo "⚡ CLI Tools:"
-if command -v gsa >/dev/null 2>&1; then
-    echo "  ✓ gsa                       $(gsa --version 2>&1 | head -1)"
-else
-    echo "  ✗ gsa                       NOT FOUND"
-    ERRORS=$((ERRORS + 1))
-fi
-if command -v scrapetool >/dev/null 2>&1; then
-    echo "  ✓ scrapetool                available"
-else
-    echo "  ✗ scrapetool                NOT FOUND"
-    ERRORS=$((ERRORS + 1))
-fi
-echo ""
-
-# ─── Kiro Skills ─────────────────────────────────────────────────────────────
-
-echo "🎯 Kiro Skills:"
-SKILL_COUNT=$(ls "$KIRO_DIR/skills" 2>/dev/null | wc -l)
-echo "  Total: $SKILL_COUNT skills"
-
-# Check critical skills
-for skill in aibrain superbrain token-efficiency seo-optimization ui-ux-pro-max; do
-    if [ -f "$KIRO_DIR/skills/$skill/SKILL.md" ]; then
-        printf "  ✓ %-25s active\n" "$skill"
+for cli in gsa scrapetool; do
+    if command -v "$cli" >/dev/null 2>&1; then
+        printf '  ✓ %-25s available\n' "$cli"
     else
-        printf "  ✗ %-25s MISSING\n" "$skill"
+        printf '  ✗ %-25s MISSING\n' "$cli"
         ERRORS=$((ERRORS + 1))
     fi
 done
-echo ""
+printf '\n'
 
-# ─── Steering Files ──────────────────────────────────────────────────────────
+printf '🎯 Connected skill ownership:\n'
+if INTEGRATION_OUTPUT="$(python3 "$SUPERBRAIN_DIR/scripts/skills_integration.py" verify \
+    --workspace "$WORKSPACE" --target "$SKILLS_TARGET" --report "$INTEGRATION_REPORT" 2>&1)"; then
+    printf '  ✓ All-Skills catalog, 44-folder receipt, public check, and owner trees are exact\n'
+    printf '  %s\n' "$INTEGRATION_OUTPUT"
+else
+    printf '  ✗ Exact connected-skill verification failed\n'
+    printf '  %s\n' "$INTEGRATION_OUTPUT"
+    ERRORS=$((ERRORS + 1))
+fi
+printf '\n'
 
-echo "📋 Steering Files:"
-for steer in superbrain.md aibrain.md verification-discipline.md; do
-    if [ -f "$KIRO_DIR/steering/$steer" ]; then
-        printf "  ✓ %-30s active\n" "$steer"
+printf '📋 Installed workspace artifacts:\n'
+for artifact in \
+    "$KIRO_DIR/steering/superbrain.md" \
+    "$KIRO_DIR/steering/verification-discipline.md" \
+    "$KIRO_DIR/skills/superbrain/SKILL.md"; do
+    if [ -f "$artifact" ] && [ ! -L "$artifact" ]; then
+        printf '  ✓ %s\n' "$artifact"
     else
-        printf "  ⚠ %-30s missing\n" "$steer"
+        printf '  ✗ %s missing or unsafe\n' "$artifact"
+        ERRORS=$((ERRORS + 1))
+    fi
+done
+printf '\n'
+
+printf '🧠 AIBrain (separate from skill ownership health):\n'
+AIBRAIN_BRAIN="$WORKSPACE/AIBrain/scripts/brain.sh"
+if python3 "$SUPERBRAIN_DIR/scripts/skills_integration.py" check-safe-file --path "$AIBRAIN_BRAIN" >/dev/null; then
+    if bash "$AIBRAIN_BRAIN" doctor >/dev/null 2>&1; then
+        printf '  ✓ AIBrain doctor            healthy\n'
+    else
+        printf '  ⚠ AIBrain doctor            reported issues\n'
         WARNINGS=$((WARNINGS + 1))
     fi
-done
-echo ""
-
-# ─── AIBrain ─────────────────────────────────────────────────────────────────
-
-echo "🧠 AIBrain:"
-if [ -f "$WORKSPACE/AIBrain/brain/identity.md" ]; then
-    echo "  ✓ Brain knowledge graph     present"
 else
-    echo "  ✗ Brain knowledge graph     MISSING"
-    ERRORS=$((ERRORS + 1))
-fi
-if [ -f "$WORKSPACE/AIBrain/memory/active-task.md" ]; then
-    echo "  ✓ Memory system             present"
-else
-    echo "  ✗ Memory system             MISSING"
-    ERRORS=$((ERRORS + 1))
-fi
-if [ -x "$WORKSPACE/AIBrain/scripts/brain.sh" ]; then
-    echo "  ✓ brain.sh                  executable"
-else
-    echo "  ✗ brain.sh                  NOT EXECUTABLE"
-    ERRORS=$((ERRORS + 1))
-fi
-echo ""
-
-# ─── Environment ─────────────────────────────────────────────────────────────
-
-echo "🌍 Environment:"
-if [ -f "$WORKSPACE/SuperBrain/.env" ]; then
-    echo "  ✓ .env file                 present (source it for vars)"
-else
-    echo "  ⚠ .env file                 not generated (run bootstrap)"
+    printf '  ⚠ AIBrain brain.sh          absent; optional synchronization unavailable\n'
     WARNINGS=$((WARNINGS + 1))
 fi
-echo ""
+printf '\n'
 
-# ─── Summary ─────────────────────────────────────────────────────────────────
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-if [ "$ERRORS" -eq 0 ] && [ "$WARNINGS" -eq 0 ]; then
-    echo "✅ Workspace HEALTHY — all systems operational"
-    echo "   $SKILL_COUNT skills | 2 packages | 2 CLIs | AIBrain active"
-elif [ "$ERRORS" -eq 0 ]; then
-    echo "⚠️  Workspace OK — $WARNINGS warning(s), no errors"
-    echo "   Run bootstrap.sh to fix warnings"
+if [ -f "$SUPERBRAIN_DIR/.env" ] && [ ! -L "$SUPERBRAIN_DIR/.env" ]; then
+    printf '🌍 Environment: generated .env present\n\n'
+elif [ -L "$SUPERBRAIN_DIR/.env" ]; then
+    printf '🌍 Environment: .env is symlinked and unsafe\n\n'
+    ERRORS=$((ERRORS + 1))
 else
-    echo "❌ Workspace UNHEALTHY — $ERRORS error(s), $WARNINGS warning(s)"
-    echo "   Run: bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh"
+    printf '🌍 Environment: .env absent (run bootstrap to generate it)\n\n'
+    WARNINGS=$((WARNINGS + 1))
 fi
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-exit $ERRORS
+printf '%s\n' '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+if [ "$ERRORS" -eq 0 ] && [ "$WARNINGS" -eq 0 ]; then
+    printf '✅ Workspace HEALTHY — exact connected ownership verified\n'
+elif [ "$ERRORS" -eq 0 ]; then
+    printf '⚠️  Workspace skill health is exact; %s optional warning(s)\n' "$WARNINGS"
+else
+    printf '❌ Workspace UNHEALTHY — %s error(s), %s warning(s)\n' "$ERRORS" "$WARNINGS"
+fi
+printf '%s\n' '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+exit "$ERRORS"
