@@ -54,6 +54,14 @@
       "install": "echo 'Blueprint repo — no install needed'",
       "verify": "test -d docs/blueprint",
       "priority": 6
+    },
+    {
+      "name": "Sanctify-Hivemind",
+      "github": "consecrating/Sanctify-Hivemind",
+      "purpose": "Multi-agent orchestration framework for autonomous ops on live WordPress sites (recon/security/critic/safety). By Sanctify (https://www.sanctify.in/)",
+      "install": "pip install -e . 2>/dev/null || true",
+      "verify": "python3 -c 'import hivemind' 2>/dev/null",
+      "priority": 7
     }
   ],
 
