@@ -66,6 +66,7 @@ clone_repo "AIBrain"                 "consecrating/AIBrain"
 clone_repo "ScrapeToolAi"           "consecrating/ScrapeToolAi"
 clone_repo "goaaiseo-seo-adapter"   "consecrating/goaaiseo-seo-adapter"
 clone_repo "goaaiseo"               "consecrating/goaaiseo"
+clone_repo "Sanctify-Hivemind"      "consecrating/Sanctify-Hivemind"
 echo ""
 
 # ─── 2. Create Kiro directories ─────────────────────────────────────────────
