@@ -7,9 +7,14 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 set -uo pipefail
 
-export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
-WORKSPACE="/projects/sandbox"
-KIRO_DIR="/projects/.kiro"
+# ─── Shared library (manifest, python autodetect, path resolution) ───────────
+SUPERBRAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib.sh
+source "$SUPERBRAIN_DIR/scripts/lib.sh"
+
+activate_python >/dev/null          # prepend detected python to PATH (this shell)
+WORKSPACE="$(resolve_workspace)"
+KIRO_DIR="$(resolve_kiro)"
 
 echo ""
 echo "🔍 SuperBrain — Workspace Verification"
@@ -22,14 +27,16 @@ WARNINGS=0
 # ─── Repositories ────────────────────────────────────────────────────────────
 
 echo "📦 Repositories:"
-for repo in All-Skills Claude-Power AIBrain ScrapeToolAi goaaiseo-seo-adapter goaaiseo SuperBrain; do
+# Manifest-declared repos, plus SuperBrain itself (the orchestrator, not in manifest).
+while read -r repo; do
+    [ -z "$repo" ] && continue
     if [ -d "$WORKSPACE/$repo/.git" ]; then
         printf "  ✓ %-25s present\n" "$repo"
     else
         printf "  ✗ %-25s MISSING\n" "$repo"
         ERRORS=$((ERRORS + 1))
     fi
-done
+done < <(manifest_repo_names; echo "SuperBrain")
 echo ""
 
 # ─── Python Packages ────────────────────────────────────────────────────────

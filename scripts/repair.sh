@@ -11,12 +11,25 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 set -uo pipefail
 
-export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
-WORKSPACE="/projects/sandbox"
-KIRO_DIR="/projects/.kiro"
+# ─── Shared library (manifest, python autodetect, path resolution) ───────────
+SUPERBRAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib.sh
+source "$SUPERBRAIN_DIR/scripts/lib.sh"
+
+activate_python >/dev/null          # prepend detected python to PATH (this shell)
+WORKSPACE="$(resolve_workspace)"
+KIRO_DIR="$(resolve_kiro)"
 
 echo "🔧 SuperBrain — Repair"
 echo ""
+
+# github_for <name>: look up a repo's github slug from the manifest (fallback list).
+github_for() {
+    local want="$1"
+    manifest_repos | while IFS='|' read -r n g; do
+        [ "$n" = "$want" ] && { printf '%s\n' "$g"; break; }
+    done
+}
 
 repair_repo() {
     local name="$1"
@@ -81,7 +94,8 @@ repair_aibrain() {
     echo "  ✓ AIBrain wired"
 }
 
-case "${1:-auto}" in
+TARGET="${1:-auto}"
+case "$TARGET" in
     auto)
         echo "Auto-detecting issues and repairing..."
         echo ""
@@ -91,19 +105,29 @@ case "${1:-auto}" in
         echo ""
         echo "✅ Auto-repair complete. Run verify.sh to confirm."
         ;;
-    All-Skills)     repair_repo "All-Skills" "consecrating/All-Skills" && repair_skills ;;
-    Claude-Power)   repair_repo "Claude-Power" "consecrating/Claude-Power" && repair_skills ;;
-    AIBrain)        repair_repo "AIBrain" "consecrating/AIBrain" && repair_aibrain ;;
-    ScrapeToolAi)   repair_repo "ScrapeToolAi" "consecrating/ScrapeToolAi" && repair_packages ;;
-    goaaiseo-seo-adapter) repair_repo "goaaiseo-seo-adapter" "consecrating/goaaiseo-seo-adapter" && repair_packages ;;
-    goaaiseo)       repair_repo "goaaiseo" "consecrating/goaaiseo" ;;
+    All-Skills)     repair_repo "All-Skills" "$(github_for All-Skills)" && repair_skills ;;
+    Claude-Power)   repair_repo "Claude-Power" "$(github_for Claude-Power)" && repair_skills ;;
+    AIBrain)        repair_repo "AIBrain" "$(github_for AIBrain)" && repair_aibrain ;;
+    ScrapeToolAi)   repair_repo "ScrapeToolAi" "$(github_for ScrapeToolAi)" && repair_packages ;;
+    goaaiseo-seo-adapter) repair_repo "goaaiseo-seo-adapter" "$(github_for goaaiseo-seo-adapter)" && repair_packages ;;
+    goaaiseo)       repair_repo "goaaiseo" "$(github_for goaaiseo)" ;;
+    Sanctify-Hivemind) repair_repo "Sanctify-Hivemind" "$(github_for Sanctify-Hivemind)" && repair_packages ;;
     skills)         repair_skills ;;
     packages)       repair_packages ;;
     aibrain)        repair_aibrain ;;
     *)
-        echo "Usage: repair.sh [auto|<repo-name>|skills|packages|aibrain]"
-        echo ""
-        echo "Repos: All-Skills, Claude-Power, AIBrain, ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo"
-        echo "Groups: skills, packages, aibrain, auto"
+        # Generic: if TARGET is a manifest repo we don't special-case, re-clone it
+        # and re-run package + skill installs to be safe.
+        gh_slug="$(github_for "$TARGET")"
+        if [ -n "$gh_slug" ]; then
+            repair_repo "$TARGET" "$gh_slug"
+            repair_packages
+            repair_skills
+        else
+            echo "Usage: repair.sh [auto|<repo-name>|skills|packages|aibrain]"
+            echo ""
+            echo "Repos: $(manifest_repo_names | paste -sd, - | sed 's/,/, /g')"
+            echo "Groups: skills, packages, aibrain, auto"
+        fi
         ;;
 esac

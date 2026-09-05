@@ -9,7 +9,14 @@
 #   eval "$(cat /projects/sandbox/SuperBrain/scripts/workspace-setup.sh)" && gsa doctor
 # ═══════════════════════════════════════════════════════════════════════════════
 
-export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
+# Python: prefer pinned 3.11.15, else newest pyenv 3.11.x, else any pyenv 3.1x,
+# else whatever python3 is on PATH. Self-contained so `eval "$(cat ...)"` works.
+_SB_PY="/root/.pyenv/versions/3.11.15/bin"
+[ -x "$_SB_PY/python3" ] || _SB_PY="$(ls -1d /root/.pyenv/versions/3.11.*/bin 2>/dev/null | sort -V | tail -1)"
+[ -n "$_SB_PY" ] && [ -x "$_SB_PY/python3" ] || _SB_PY="$(ls -1d /root/.pyenv/versions/3.1*/bin 2>/dev/null | sort -V | tail -1)"
+[ -n "$_SB_PY" ] && [ -x "$_SB_PY/python3" ] || _SB_PY="$(dirname "$(command -v python3 2>/dev/null)" 2>/dev/null)"
+[ -n "$_SB_PY" ] && export PATH="$_SB_PY:$PATH"
+unset _SB_PY
 export GOAAISEO_ROOT="/projects/sandbox/goaaiseo"
 export GOAAISEO_BLUEPRINT="/projects/sandbox/goaaiseo/docs/blueprint"
 export GSA_SINK="jsonfile"

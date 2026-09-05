@@ -1,0 +1,28 @@
+name: selftest
+
+on:
+  push:
+    branches: [ main, "**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  selftest:
+    name: Script layer self-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tooling (jq, shellcheck)
+        run: sudo apt-get update -y && sudo apt-get install -y jq shellcheck
+
+      - name: ShellCheck (advisory)
+        run: |
+          shellcheck -S warning scripts/*.sh || true
+
+      - name: Run selftest
+        run: bash scripts/selftest.sh
+
+      - name: Validate manifest.json
+        run: jq -e '.repositories | length >= 1' manifest.json
