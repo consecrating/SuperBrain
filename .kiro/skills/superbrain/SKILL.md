@@ -1,83 +1,96 @@
 ---
 name: superbrain
-description: "Master workspace orchestrator — auto-bootstraps all repos (All-Skills, Claude-Power, AIBrain, ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo) on session start. Activate when starting a session, when repos are missing, when packages fail to import, or when the workspace needs repair. Provides bootstrap, verify, and repair commands."
+description: "Master workspace orchestrator — bootstraps all repos (All-Skills, Claude-Power, AIBrain, ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo) from a declarative manifest. Activate when starting a session, when repos are missing, when packages fail to import, when a CLI is not found, or when the workspace needs repair. Provides bootstrap, verify and repair commands."
 metadata:
-  version: "1.0"
+  version: "2.0"
   author: consecrating
 ---
 
 # SuperBrain — Workspace Orchestrator
 
-You are running in a SuperBrain-powered workspace. This means ALL repos should
-be present, installed, and connected. If they're not, fix it immediately.
+`manifest.json` is the single source of truth. The scripts hold no per-repo
+knowledge, so trust the manifest over anything hardcoded.
 
-## Auto-Bootstrap Protocol
-
-At the START of every session:
+## Bootstrap
 
 ```bash
-export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
 bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
 ```
 
-This is idempotent — safe to run even if everything is already installed.
+Idempotent. If `.bootstrapped` matches the current manifest version it skips
+installing and verifies instead — this returns in well under a second, so there
+is no reason to avoid running it.
 
-## What Gets Installed
+| Flag | Effect |
+|---|---|
+| `--force` | Reinstall regardless of the sentinel |
+| `--frozen` | Check out the commits pinned in `superbrain.lock` |
+| `--update-lock` | Record current HEADs into `superbrain.lock` |
+| `--no-prune` | Keep skills no repo declares any more |
+| `--quiet` | Warnings, errors and summary only |
 
-| Repo | What It Provides |
-|------|-----------------|
-| All-Skills | 44 Kiro skills (design, UX, WordPress, motion, SEO) |
+**Exit code is the error count, and every failure prints its captured output.**
+If a step fails, the reason is already on screen — read it rather than guessing.
+
+## Diagnose and repair
+
+```bash
+bash /projects/sandbox/SuperBrain/scripts/verify.sh        # changes nothing
+bash /projects/sandbox/SuperBrain/scripts/repair.sh list   # show targets
+bash /projects/sandbox/SuperBrain/scripts/repair.sh AIBrain
+bash /projects/sandbox/SuperBrain/scripts/repair.sh skills
+bash /projects/sandbox/SuperBrain/scripts/repair.sh packages
+```
+
+`repair.sh` will **not** pull over a dirty working tree, and reports that as a
+warning rather than pretending it updated. It will never `rm -rf` a directory
+that is not a git repo.
+
+## What is installed
+
+| Repo | Provides |
+|---|---|
+| All-Skills | 45 Kiro skills (design, UX, WordPress, motion, SEO) |
 | Claude-Power | 16 Kiro skills (engineering, debugging, security, PRs) |
 | AIBrain | Persistent intelligence (memory, patterns, stack, decisions) |
 | ScrapeToolAi | `scrapetool` CLI + Python scraping framework |
 | goaaiseo-seo-adapter | `gsa` CLI + SEO normalization library |
 | goaaiseo | GOAAISEO blueprint (architecture reference) |
 
-## Self-Healing
+62 skills total, not 63 — `token-efficiency` ships in both All-Skills and
+Claude-Power. Bootstrap reports the collision and names the winner.
 
-If anything is broken mid-session:
+## CLIs and libraries
 
-```bash
-# Quick fix — re-run bootstrap
-bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
-
-# Just verify without reinstalling
-bash /projects/sandbox/SuperBrain/scripts/verify.sh
-
-# Repair a specific repo
-bash /projects/sandbox/SuperBrain/scripts/repair.sh <repo-name>
-```
-
-## Available After Bootstrap
-
-### CLIs
-- `scrapetool fetch|extract|crawl|import|search|mcp-server`
-- `gsa ingest|analyze|doctor|serve`
-- `bash /projects/sandbox/AIBrain/scripts/brain.sh status|recall|decide|correct`
-
-### Python Libraries
-```python
-from scrapetoolai.fetchers.http_fetcher import http_fetch, SimplePage
-from scrapetoolai.fetchers.escalation import auto_fetch
-from scrapetoolai.organizer.search import search_collection
-
-from gsa.models import GraphNode, IssueRecord, ActionCandidate, IngestResult
-from gsa.normalize import ingest_seo_report
-from gsa.sinks import get_sink
-from gsa.config import Settings
-```
-
-### Environment Variables
-All set automatically. Source them with:
 ```bash
 source /projects/sandbox/SuperBrain/.env
+
+scrapetool fetch|extract|crawl|import|search|mcp-server
+gsa ingest|analyze|doctor|serve
+bash /projects/sandbox/AIBrain/scripts/brain.sh status|recall|decide|correct
 ```
 
-## When to Activate This Skill
+```python
+from scrapetoolai.fetchers.escalation import auto_fetch
+from gsa.models import GraphNode, IssueRecord, ActionCandidate, IngestResult
+from gsa.normalize import ingest_seo_report
+```
 
-- ✅ Session start (bootstrap check)
-- ✅ Import errors (package not installed)
-- ✅ Command not found (CLI missing)
-- ✅ Skill not recognized (not installed)
-- ✅ "Workspace is broken" / repair needed
-- ✅ Need to understand how repos connect
+## Adding a repo
+
+Edit `manifest.json` only — never add install logic to the shell scripts. CI
+fails the build if per-repo logic leaks into `scripts/`.
+
+## 🔒 Security
+
+SuperBrain and AIBrain are both **public** repositories. Never write
+credentials, tokens or app passwords into either. Use a private vault and
+reference secrets by name only.
+
+## When to activate
+
+- Session start (bootstrap check)
+- `ImportError` on `scrapetoolai` or `gsa`
+- `command not found` for `scrapetool` or `gsa`
+- A skill is not recognised
+- Workspace repair, or understanding how the repos connect
