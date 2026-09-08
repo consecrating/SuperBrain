@@ -12,3 +12,6 @@ Thumbs.db
 *~
 .vscode/
 .idea/
+
+# Bootstrap artifacts
+.bootstrap.log

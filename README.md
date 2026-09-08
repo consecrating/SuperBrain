@@ -1,198 +1,150 @@
 # ⚡ SuperBrain
 
-**The ONLY repo you need to connect.** SuperBrain auto-installs and wires your entire workspace — all 6 repos, 61 skills, 2 Python packages, 2 CLIs, and persistent intelligence — in a single bootstrap.
+**The only repo you need to connect.** SuperBrain clones and wires your entire workspace — 6 repos, 62 skills, 2 Python packages, 2 CLIs, and persistent intelligence — from one declarative manifest.
 
 > Connect `consecrating/SuperBrain` → start a session → everything is ready.
 
 ---
 
-## What It Does
+## How it works
 
-When SuperBrain is the only repo connected to a Kiro session:
-
-1. **Detects** that other repos are missing
-2. **Clones** all 6 repositories automatically
-3. **Installs** 61 Kiro skills (design + engineering + AI brain)
-4. **Installs** Python packages (ScrapeToolAi, goaaiseo-seo-adapter)
-5. **Wires** environment variables, CLIs, and steering files
-6. **Activates** AIBrain persistent intelligence
-7. **Verifies** everything works
-8. **Self-heals** if anything breaks
-
-All in ~30 seconds. No manual setup. No copy-pasting. No "install X first."
-
----
-
-## How It Works
+`manifest.json` is the **single source of truth**. It declares every repo, its install steps, and its verification checks. The shell scripts contain no per-repo knowledge — add a repo to the manifest and it is picked up automatically. CI enforces this.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  SESSION START — SuperBrain is the only connected repo                  │
-│                                                                          │
-│  .kiro/steering/superbrain.md (always-on) instructs Kiro:               │
-│  "Run bootstrap.sh immediately"                                          │
-│                                                                          │
-│  .kiro/hooks/auto-bootstrap.json (SessionStart trigger):                │
-│  Automatically runs bootstrap.sh before any user interaction             │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  bootstrap.sh executes:                                                  │
-│                                                                          │
-│  1. git clone consecrating/All-Skills         → 44 design skills         │
-│  2. git clone consecrating/Claude-Power       → 16 engineering skills    │
-│  3. git clone consecrating/AIBrain            → persistent intelligence  │
-│  4. git clone consecrating/ScrapeToolAi       → scraping framework       │
-│  5. git clone consecrating/goaaiseo-seo-adapter → SEO adapter            │
-│  6. git clone consecrating/goaaiseo           → SEO OS blueprint         │
-│                                                                          │
-│  7. Install All-Skills (45 skills → /projects/.kiro/skills/)             │
-│  8. Install Claude-Power (16 skills + steering + scripts)                │
-│  9. Install AIBrain (brain skill + steering)                             │
-│  10. pip install -e ScrapeToolAi (scrapetool CLI)                        │
-│  11. pip install -e goaaiseo-seo-adapter (gsa CLI)                       │
-│  12. Set environment variables + write .env                              │
-│  13. Verify everything → report status                                   │
-└─────────────────────────────────────────────────────────────────────────┘
+.kiro/hooks/auto-bootstrap.json   (SessionStart)
+    └─> scripts/session-start.sh  (preserves exit status)
+            └─> scripts/bootstrap.sh
+                    ├─ reads manifest.json via scripts/lib/manifest.py
+                    ├─ clones/pins each repo        (superbrain.lock)
+                    ├─ detects skill-name collisions
+                    ├─ runs each repo's declared install steps
+                    ├─ prunes skills no repo declares any more
+                    ├─ writes .env from manifest environment
+                    ├─ runs each repo's declared verify steps
+                    └─ writes .bootstrapped only on success
 ```
 
 ---
 
-## Quick Start
-
-### Option A: Just connect this repo (recommended)
-
-In Kiro Web, connect `consecrating/SuperBrain` to your session.
-The steering file instructs Kiro to run bootstrap automatically.
-
-### Option B: Manual trigger
+## Quick start
 
 ```bash
-bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
-```
-
-### Option C: From scratch (new machine)
-
-```bash
-git clone https://github.com/consecrating/SuperBrain.git
-cd SuperBrain
-bash scripts/bootstrap.sh
-```
-
----
-
-## What You Get After Bootstrap
-
-### 61 Kiro Skills
-
-| Source | Count | Focus |
-|--------|-------|-------|
-| All-Skills | 44 | Design, UX, WordPress, SEO, motion |
-| Claude-Power | 16 | Engineering, debugging, security, refactoring |
-| AIBrain | 1 | Persistent intelligence layer |
-
-### 2 Python Packages
-
-| Package | CLI | Purpose |
-|---------|-----|---------|
-| scrapetoolai 1.0 | `scrapetool` | Stealth web scraping + AI extraction |
-| goaaiseo-seo-adapter 0.1 | `gsa` | SEO report normalization |
-
-### Persistent Intelligence (AIBrain)
-
-- **Memory** — never forgets decisions, corrections, or context
-- **Stack registry** — never suggests outdated packages
-- **Pattern library** — uses YOUR proven code patterns
-- **Self-healing** — learns from mistakes, never repeats them
-
-### Environment Variables
-
-All set automatically. Available via `source /projects/sandbox/SuperBrain/.env`
-
----
-
-## Scripts
-
-| Script | Purpose | When to Use |
-|--------|---------|-------------|
-| `scripts/bootstrap.sh` | Full install + verify | Session start, fresh workspace |
-| `scripts/verify.sh` | Health check (no changes) | "Is everything working?" |
-| `scripts/repair.sh` | Fix broken components | Something stopped working |
-| `scripts/workspace-setup.sh` | Load env vars only | Prefix commands with env |
-
----
-
-## Self-Healing
-
-SuperBrain can repair itself:
-
-```bash
-# Everything broke? Full re-bootstrap (idempotent)
+# Full install (safe to re-run — idempotent)
 bash scripts/bootstrap.sh
 
-# Just check health
+# Health check, changes nothing
 bash scripts/verify.sh
 
-# Fix specific thing
-bash scripts/repair.sh All-Skills    # re-install skills
-bash scripts/repair.sh packages      # re-install pip packages
-bash scripts/repair.sh aibrain       # re-wire intelligence
-bash scripts/repair.sh auto          # detect and fix all issues
+# Fix something specific
+bash scripts/repair.sh list
+bash scripts/repair.sh AIBrain
+```
+
+### bootstrap.sh flags
+
+| Flag | Effect |
+|---|---|
+| *(none)* | Install. Skips instantly if `.bootstrapped` matches the manifest version, verifying instead. |
+| `--force` | Reinstall even if already bootstrapped. |
+| `--frozen` | Check out the exact commits recorded in `superbrain.lock`. |
+| `--update-lock` | Record current HEADs into `superbrain.lock`. |
+| `--no-prune` | Keep skills that no repo declares any more. |
+| `--quiet` | Only warnings, errors and the summary. |
+
+Exit code is the number of errors. **Failures print their captured output** — nothing is sent to `/dev/null`.
+
+---
+
+## What you get
+
+### 62 Kiro skills
+
+| Source | Count | Focus |
+|---|---|---|
+| All-Skills | 45 | Design, UX, WordPress, SEO, motion |
+| Claude-Power | 16 | Engineering, debugging, security, refactoring |
+| AIBrain | 1 | Persistent intelligence layer |
+| SuperBrain | 1 | Workspace orchestration |
+
+62 rather than 63 because `token-efficiency` ships in **both** All-Skills and Claude-Power. Bootstrap now reports this collision and names the winner instead of silently overwriting.
+
+### 2 Python packages
+
+| Package | CLI | Purpose |
+|---|---|---|
+| scrapetoolai | `scrapetool` | Stealth web scraping + AI extraction |
+| goaaiseo-seo-adapter | `gsa` | SEO report normalization |
+
+### Environment
+
+```bash
+source /projects/sandbox/SuperBrain/.env
 ```
 
 ---
 
-## File Structure
+## Reproducibility
 
+`superbrain.lock` pins every repo to a commit:
+
+```bash
+bash scripts/bootstrap.sh --update-lock   # record current state
+bash scripts/bootstrap.sh --frozen        # reproduce it exactly
+bash scripts/verify.sh                    # reports DRIFTED if HEAD != lock
 ```
-SuperBrain/
-├── README.md                           # This file
-├── manifest.json                       # Declarative repo + install spec
-├── .env                                # Generated env vars (after bootstrap)
-├── .gitignore
-├── LICENSE
-├── scripts/
-│   ├── bootstrap.sh                   # THE master installer
-│   ├── verify.sh                      # Health check
-│   ├── repair.sh                      # Fix broken things
-│   └── workspace-setup.sh            # Env vars only (source-able)
-└── .kiro/
-    ├── steering/
-    │   └── superbrain.md              # Always-on: "run bootstrap at session start"
-    ├── skills/
-    │   └── superbrain/
-    │       └── SKILL.md               # Orchestration skill
-    └── hooks/
-        └── auto-bootstrap.json        # SessionStart hook (auto-trigger)
-```
+
+`--frozen` refuses to check out over a dirty working tree.
 
 ---
 
-## The Promise
+## Repos managed
 
-**One repo. One connection. Full power.**
-
-No more:
-- "Install X first"
-- "Set up Y manually"  
-- "Run these 15 commands"
-- "I forgot what was set up last time"
-
-Connect SuperBrain → start working.
+| Repo | What |
+|---|---|
+| [All-Skills](https://github.com/consecrating/All-Skills) | 45 Kiro skills (design/UX/WP) |
+| [Claude-Power](https://github.com/consecrating/Claude-Power) | 16 Kiro skills (engineering) |
+| [AIBrain](https://github.com/consecrating/AIBrain) | Persistent intelligence layer |
+| [ScrapeToolAi](https://github.com/consecrating/ScrapeToolAi) | Web scraping framework |
+| [goaaiseo-seo-adapter](https://github.com/consecrating/goaaiseo-seo-adapter) | SEO adapter (`gsa`) |
+| [goaaiseo](https://github.com/consecrating/goaaiseo) | Autonomous SEO OS blueprint |
 
 ---
 
-## Repos Managed
+## Adding a repo
 
-| Repo | GitHub | What |
-|------|--------|------|
-| All-Skills | consecrating/All-Skills | 44 Kiro skills (design/UX/WP) |
-| Claude-Power | consecrating/Claude-Power | 16 Kiro skills (engineering) |
-| AIBrain | consecrating/AIBrain | Persistent intelligence layer |
-| ScrapeToolAi | consecrating/ScrapeToolAi | Web scraping framework |
-| goaaiseo-seo-adapter | consecrating/goaaiseo-seo-adapter | SEO adapter (gsa) |
-| goaaiseo | consecrating/goaaiseo | Autonomous SEO OS blueprint |
+Edit `manifest.json` only:
+
+```json
+{
+  "name": "My-Repo",
+  "github": "consecrating/My-Repo",
+  "branch": null,
+  "purpose": "What it does",
+  "priority": 7,
+  "skills_dir": ".kiro/skills",
+  "install": ["pip install -e . --quiet"],
+  "verify": ["python3 -c 'import my_repo'"]
+}
+```
+
+Placeholders `${WORKSPACE}`, `${KIRO_DIR}`, `${KIRO_SKILLS}`, `${REPO}` are expanded before execution. `install` steps run with the repo as working directory. `verify` must be non-empty — CI rejects a repo without checks.
+
+---
+
+## Development
+
+```bash
+bash tests/smoke.sh    # 30 tests, no network, no workspace mutation
+shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh tests/*.sh
+```
+
+CI runs shellcheck, the smoke suite, manifest schema validation, and a check that no per-repo install logic has leaked back into `scripts/`.
+
+---
+
+## Security
+
+Credentials never belong in this repo or in AIBrain — **both are public**. Use a private vault. AIBrain ships `scripts/scan-secrets.sh` as a pre-commit hook.
 
 ---
 

@@ -1,79 +1,132 @@
 {
+  "$comment": "EXECUTABLE spec. scripts/bootstrap.sh, verify.sh and repair.sh all read this file — it is the single source of truth. Do not duplicate install logic into the shell scripts. Placeholders ${WORKSPACE}, ${KIRO_DIR}, ${KIRO_SKILLS}, ${REPO} are expanded before execution.",
   "name": "SuperBrain",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Auto-bootstrap manifest — declares all repos, install order, and verification checks.",
   "author": "consecrating",
+
   "workspace": "/projects/sandbox",
-  "python": "/root/.pyenv/versions/3.11.15/bin",
+  "kiro_dir": "/projects/.kiro",
+  "python_bin": "/root/.pyenv/versions/3.11.15/bin",
 
   "repositories": [
     {
       "name": "All-Skills",
       "github": "consecrating/All-Skills",
-      "purpose": "44 design/UX/WordPress Kiro skills",
-      "install": "KIRO_SKILLS_DIR=/projects/.kiro/skills ./install.sh",
-      "verify": "test $(ls /projects/.kiro/skills | wc -l) -ge 40",
-      "priority": 1
+      "branch": null,
+      "purpose": "Design/UX/WordPress Kiro skills",
+      "priority": 1,
+      "skills_dir": ".kiro/skills",
+      "install": [
+        "KIRO_SKILLS_DIR=${KIRO_SKILLS} bash ./install.sh"
+      ],
+      "verify": [
+        "test -d ${KIRO_SKILLS}/ui-ux-pro-max"
+      ]
     },
     {
       "name": "Claude-Power",
       "github": "consecrating/Claude-Power",
-      "purpose": "16 engineering Kiro skills + steering + scripts",
-      "install": "cp -r .kiro/skills/* /projects/.kiro/skills/ && cp -r .kiro/steering/* /projects/.kiro/steering/ && cp -r .kiro/scripts/* /projects/.kiro/scripts/",
-      "verify": "test -f /projects/.kiro/skills/token-efficiency/SKILL.md",
-      "priority": 2
+      "branch": null,
+      "purpose": "Engineering Kiro skills + steering + scripts",
+      "priority": 2,
+      "skills_dir": ".kiro/skills",
+      "install": [
+        "cp -r .kiro/skills/. ${KIRO_SKILLS}/",
+        "test -d .kiro/steering && cp -r .kiro/steering/. ${KIRO_DIR}/steering/ || true",
+        "test -d .kiro/scripts && cp -r .kiro/scripts/. ${KIRO_DIR}/scripts/ || true"
+      ],
+      "verify": [
+        "test -f ${KIRO_SKILLS}/token-efficiency/SKILL.md"
+      ]
     },
     {
       "name": "AIBrain",
       "github": "consecrating/AIBrain",
+      "branch": null,
       "purpose": "Persistent intelligence layer — memory, patterns, stack, self-healing",
-      "install": "bash scripts/install.sh",
-      "verify": "test -f /projects/.kiro/skills/aibrain/SKILL.md && test -f /projects/.kiro/steering/aibrain.md",
-      "priority": 3
+      "priority": 3,
+      "skills_dir": ".kiro/skills",
+      "install": [
+        "bash scripts/install.sh"
+      ],
+      "verify": [
+        "test -f ${KIRO_SKILLS}/aibrain/SKILL.md",
+        "test -f ${KIRO_DIR}/steering/aibrain.md"
+      ]
     },
     {
       "name": "ScrapeToolAi",
       "github": "consecrating/ScrapeToolAi",
+      "branch": null,
       "purpose": "Stealth web scraping framework + AI extraction + MCP server",
-      "install": "pip install -e .",
-      "verify": "python3 -c 'import scrapetoolai' 2>/dev/null",
-      "priority": 4
+      "priority": 4,
+      "install": [
+        "pip install -e . --quiet"
+      ],
+      "verify": [
+        "python3 -c 'import scrapetoolai'",
+        "command -v scrapetool"
+      ]
     },
     {
       "name": "goaaiseo-seo-adapter",
       "github": "consecrating/goaaiseo-seo-adapter",
-      "purpose": "Integration adapter: claude-seo → GOAAISEO graph model",
-      "install": "pip install -e .",
-      "verify": "python3 -c 'from gsa import models, normalize' 2>/dev/null",
-      "priority": 5
+      "branch": null,
+      "purpose": "Integration adapter: claude-seo -> GOAAISEO graph model",
+      "priority": 5,
+      "install": [
+        "pip install -e . --quiet"
+      ],
+      "verify": [
+        "python3 -c 'from gsa import models, normalize, sinks'",
+        "command -v gsa"
+      ]
     },
     {
       "name": "goaaiseo",
       "github": "consecrating/goaaiseo",
+      "branch": null,
       "purpose": "Autonomous SEO Operating System (blueprint/architecture)",
-      "install": "echo 'Blueprint repo — no install needed'",
-      "verify": "test -d docs/blueprint",
-      "priority": 6
+      "priority": 6,
+      "install": [],
+      "verify": [
+        "test -d docs/blueprint"
+      ]
     }
   ],
 
+  "self": {
+    "name": "SuperBrain",
+    "skills_dir": ".kiro/skills",
+    "install": [
+      "cp -r .kiro/steering/. ${KIRO_DIR}/steering/",
+      "cp -r .kiro/skills/. ${KIRO_SKILLS}/"
+    ],
+    "verify": [
+      "test -f ${KIRO_DIR}/steering/superbrain.md",
+      "test -f ${KIRO_SKILLS}/superbrain/SKILL.md"
+    ]
+  },
+
   "environment": {
-    "PATH_PREFIX": "/root/.pyenv/versions/3.11.15/bin",
-    "GOAAISEO_ROOT": "/projects/sandbox/goaaiseo",
-    "GOAAISEO_BLUEPRINT": "/projects/sandbox/goaaiseo/docs/blueprint",
+    "GOAAISEO_ROOT": "${WORKSPACE}/goaaiseo",
+    "GOAAISEO_BLUEPRINT": "${WORKSPACE}/goaaiseo/docs/blueprint",
     "GSA_SINK": "jsonfile",
-    "GSA_SINK_PATH": "/projects/sandbox/goaaiseo-seo-adapter/out/site.graph.json",
+    "GSA_SINK_PATH": "${WORKSPACE}/goaaiseo-seo-adapter/out/site.graph.json",
     "GSA_MIN_CONFIDENCE": "0.7",
-    "SCRAPETOOL_OUTPUT": "/projects/sandbox/ScrapeToolAi/output",
-    "SCRAPETOOL_IMPORTS": "/projects/sandbox/ScrapeToolAi/imports",
-    "KIRO_SKILLS_DIR": "/projects/.kiro/skills",
-    "AIBRAIN_ROOT": "/projects/sandbox/AIBrain"
+    "SCRAPETOOL_OUTPUT": "${WORKSPACE}/ScrapeToolAi/output",
+    "SCRAPETOOL_IMPORTS": "${WORKSPACE}/ScrapeToolAi/imports",
+    "KIRO_SKILLS_DIR": "${KIRO_SKILLS}",
+    "AIBRAIN_ROOT": "${WORKSPACE}/AIBrain",
+    "SUPERBRAIN_ROOT": "${WORKSPACE}/SuperBrain"
   },
 
   "post_install": [
-    "chmod +x /projects/.kiro/scripts/*.sh 2>/dev/null || true",
-    "find /projects/.kiro/skills -name '*.sh' -exec chmod +x {} \\; 2>/dev/null || true",
-    "mkdir -p /projects/sandbox/goaaiseo-seo-adapter/out",
-    "mkdir -p /projects/sandbox/ScrapeToolAi/output /projects/sandbox/ScrapeToolAi/imports"
+    "chmod +x ${KIRO_DIR}/scripts/*.sh 2>/dev/null || true",
+    "find ${KIRO_SKILLS} -name '*.sh' -exec chmod +x {} + 2>/dev/null || true",
+    "chmod +x ${WORKSPACE}/AIBrain/scripts/*.sh 2>/dev/null || true",
+    "mkdir -p ${WORKSPACE}/goaaiseo-seo-adapter/out",
+    "mkdir -p ${WORKSPACE}/ScrapeToolAi/output ${WORKSPACE}/ScrapeToolAi/imports"
   ]
 }
