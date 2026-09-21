@@ -54,6 +54,16 @@
       "install": "echo 'Blueprint repo — no install needed'",
       "verify": "test -d docs/blueprint",
       "priority": 6
+    },
+    {
+      "name": "FirecrawlPower",
+      "github": "consecrating/FirecrawlPower",
+      "purpose": "Keyless Firecrawl web layer — 6 skills + fcless CLI (web search, ~43M paper index, GitHub issue history). No API key required.",
+      "install": "bash install.sh",
+      "verify": "test -f $HOME/.agents/skills/fc-hybrid-router/SKILL.md && command -v fcless",
+      "priority": 7,
+      "optional": true,
+      "note": "Marked optional: bootstrap tolerates its absence so a missing clone cannot abort the run."
     }
   ],
 
