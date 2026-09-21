@@ -66,6 +66,9 @@ clone_repo "AIBrain"                 "consecrating/AIBrain"
 clone_repo "ScrapeToolAi"           "consecrating/ScrapeToolAi"
 clone_repo "goaaiseo-seo-adapter"   "consecrating/goaaiseo-seo-adapter"
 clone_repo "goaaiseo"               "consecrating/goaaiseo"
+# Repo #7 — tolerated if absent so a failed clone cannot abort bootstrap
+# (clone_repo returns 1 on failure, and `set -e` would otherwise exit here).
+clone_repo "FirecrawlPower"         "consecrating/FirecrawlPower" || true
 echo ""
 
 # ─── 2. Create Kiro directories ─────────────────────────────────────────────
@@ -139,8 +142,22 @@ echo ""
 
 echo "── 6/6 Installing SuperBrain steering ──"
 cp "$SUPERBRAIN_DIR/.kiro/steering/superbrain.md" "$KIRO_DIR/steering/" 2>/dev/null || true
+cp "$SUPERBRAIN_DIR/.kiro/steering/install-everything.md" "$KIRO_DIR/steering/" 2>/dev/null || true
 cp -r "$SUPERBRAIN_DIR/.kiro/skills/superbrain" "$KIRO_DIR/skills/" 2>/dev/null || true
 echo "  ✓ SuperBrain steering + skill installed"
+echo ""
+
+# ─── 7b. Install FirecrawlPower (repo #7 — keyless web layer) ────────────────
+
+echo "── FirecrawlPower (keyless web layer) ──"
+if [ -f "$WORKSPACE/FirecrawlPower/install.sh" ]; then
+    KIRO_SKILLS_DIR="$KIRO_DIR/skills" \
+      bash "$WORKSPACE/FirecrawlPower/install.sh" 2>&1 | grep -E '✓|⚠|✗' | tail -6 || true
+    echo "  ✓ 6 keyless skills + fcless CLI"
+else
+    echo "  ⚠ FirecrawlPower not present — skipped (no API-key-free web layer)"
+    echo "    for full cross-agent install use: bash scripts/install-everything.sh"
+fi
 echo ""
 
 # ─── 8. Post-install setup ───────────────────────────────────────────────────
