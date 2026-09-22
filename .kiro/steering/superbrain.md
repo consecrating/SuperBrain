@@ -18,9 +18,11 @@ ALL other repos must be present and operational.
    bash /projects/sandbox/SuperBrain/scripts/bootstrap.sh
    ```
 3. This automatically:
-   - Clones All-Skills, Claude-Power, AIBrain, ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo
-   - Installs 61 Kiro skills (44 design + 16 engineering + superbrain)
-   - Installs Python packages (scrapetoolai, gsa)
+   - Clones All-Skills, Claude-Power, Claude-Opus5, Prompt-Sweeper, AIBrain,
+     ScrapeToolAi, goaaiseo-seo-adapter, goaaiseo
+   - Installs 63 Kiro skills (45 design + 16 engineering + aibrain + prompt-sweeper)
+   - Installs Python packages (scrapetoolai, gsa, opus5lean, promptsweeper)
+   - Installs MCP servers (opus5-lean, prompt-sweeper)
    - Activates AIBrain persistent intelligence
    - Sets all environment variables
    - Verifies everything works
@@ -28,8 +30,10 @@ ALL other repos must be present and operational.
 ## After Bootstrap — Full Power Available
 
 Once bootstrapped, you have:
-- **61 Kiro skills** active
+- **63 Kiro skills** active
 - **AIBrain** persistent intelligence (memory, patterns, stack registry, banned list)
+- **opus5-lean** for Opus 5 token accounting and cache planning (`opus5-lean` CLI)
+- **prompt-sweeper** for measured prompt selection (`prompt-sweep` CLI)
 - **ScrapeToolAi** for stealth web scraping (`scrapetool` CLI)
 - **gsa** for SEO analysis normalization (`gsa` CLI)
 - **GOAAISEO** blueprint for architecture reference
@@ -66,7 +70,27 @@ scrapetool extract https://example.com --what "data"
 # SEO adapter
 gsa ingest report.json --site https://example.com --site-id tenant-1
 gsa doctor
+
+# Token accounting for Opus 5 (offline, free)
+opus5-lean count prompt.md
+opus5-lean cache segments.json --rpd 5000
+
+# Prompt selection (generate/recall are free; run is billed)
+prompt-sweep generate "<task>"
+prompt-sweep recall "<task>"
+prompt-sweep run "<task>" --python-code --trials 3 --save
 ```
+
+## Before hand-writing a prompt
+
+Check whether a sweep already settled it:
+
+```bash
+prompt-sweep recall "<the task>"
+```
+
+A recorded strategy is evidence; overriding it by intuition discards the
+measurement that produced it.
 
 ## The Contract
 
