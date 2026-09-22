@@ -1,6 +1,6 @@
 {
   "name": "SuperBrain",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Auto-bootstrap manifest — declares all repos, install order, and verification checks.",
   "author": "consecrating",
   "workspace": "/projects/sandbox",
@@ -18,9 +18,17 @@
     {
       "name": "Claude-Power",
       "github": "consecrating/Claude-Power",
-      "purpose": "16 engineering Kiro skills + steering + scripts",
-      "install": "cp -r .kiro/skills/* /projects/.kiro/skills/ && cp -r .kiro/steering/* /projects/.kiro/steering/ && cp -r .kiro/scripts/* /projects/.kiro/scripts/",
-      "verify": "test -f /projects/.kiro/skills/token-efficiency/SKILL.md",
+      "purpose": "17 engineering Kiro skills + steering + scripts + MCP server (opus5-lean)",
+      "install": "cp -r .kiro/skills/* /projects/.kiro/skills/ && cp -r .kiro/steering/* /projects/.kiro/steering/ && cp -r .kiro/scripts/* /projects/.kiro/scripts/ && cp -r .kiro/mcp-servers/* /projects/.kiro/mcp-servers/",
+      "verify": "test -f /projects/.kiro/skills/token-efficiency/SKILL.md && test -f /projects/.kiro/mcp-servers/opus5-lean/server.json",
+      "priority": 2
+    },
+    {
+      "name": "Claude-Opus5",
+      "github": "consecrating/Claude-Opus5",
+      "purpose": "Token-efficiency toolkit for Opus 5 (count, slim, cache, sweep)",
+      "install": "pip install -e .",
+      "verify": "python3 -c 'from opus5lean import count_tokens' 2>/dev/null && command -v opus5-lean >/dev/null 2>&1",
       "priority": 2
     },
     {
@@ -67,13 +75,21 @@
     "SCRAPETOOL_OUTPUT": "/projects/sandbox/ScrapeToolAi/output",
     "SCRAPETOOL_IMPORTS": "/projects/sandbox/ScrapeToolAi/imports",
     "KIRO_SKILLS_DIR": "/projects/.kiro/skills",
+    "KIRO_MCP_SERVERS": "/projects/.kiro/mcp-servers",
     "AIBRAIN_ROOT": "/projects/sandbox/AIBrain"
   },
 
   "post_install": [
     "chmod +x /projects/.kiro/scripts/*.sh 2>/dev/null || true",
     "find /projects/.kiro/skills -name '*.sh' -exec chmod +x {} \\; 2>/dev/null || true",
+    "chmod +x /projects/sandbox/Claude-Opus5/src/opus5lean/*.sh 2>/dev/null || true",
     "mkdir -p /projects/sandbox/goaaiseo-seo-adapter/out",
     "mkdir -p /projects/sandbox/ScrapeToolAi/output /projects/sandbox/ScrapeToolAi/imports"
+  ],
+
+  "verify": [
+    "test $(ls /projects/.kiro/skills | wc -l) -ge 50",
+    "test -f /projects/.kiro/mcp-servers/opus5-lean/server.json",
+    "python3 -c 'from opus5lean import count_tokens' 2>/dev/null"
   ]
 }
