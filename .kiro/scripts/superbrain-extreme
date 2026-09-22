@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# SuperBrain Extreme CLI - Swiss Army Knife for AI Development
+set -euo pipefail
+
+export PATH="/root/.pyenv/versions/3.11.15/bin:$PATH"
+export PYTHONPATH="${PYTHONPATH:-}"
+
+SCRIPTS_DIR="/projects/sandbox/SuperBrain/.kiro/scripts"
+CLAUDE_OPUS5_DIR="/projects/sandbox/Claude-Opus5/.kiro/mcp-servers"
+
+cmd_predict() {
+    if [ -z "$1" ]; then
+        echo "Usage: superbrain-extreme predict \"prompt\""
+        exit 1
+    fi
+    python3 "$CLAUDE_OPUS5_DIR/opus5-power/engine.py" detect "$1" 2>/dev/null || echo "Predictive bootstrap: Run bootstrap.sh to clone predictive-bootstrap"
+}
+
+cmd_clone() {
+    if [ -z "$1" ]; then
+        echo "Usage: superbrain-extreme clone <repo_name>"
+        exit 1
+    fi
+    python3 "$CLAUDE_OPUS5_DIR/opus5-power/engine.py" clone "$1" 2>/dev/null || echo "Clone: Run bootstrap.sh to clone predictive-bootstrap"
+}
+
+cmd_bootstrap() {
+    case "${1:-all}" in
+        all) bash "$SCRIPTS_DIR/../scripts/bootstrap.sh" ;;
+        wordpress|wp)
+            echo "Bootstraping for WordPress..."
+            bash "$SCRIPTS_DIR/../scripts/bootstrap.sh" ;;
+        python)
+            echo "Bootstraping for Python..."
+            bash "$SCRIPTS_DIR/../scripts/bootstrap.sh" ;;
+        scrape)
+            echo "Bootstraping for scraping..."
+            bash "$SCRIPTS_DIR/../scripts/bootstrap.sh" ;;
+        *) echo "Unknown context: $1"; exit 1 ;;
+    esac
+}
+
+cmd_mcp() {
+    python3 "$SCRIPTS_DIR/mcp-hub/hub.py" "${1:-status}" 2>/dev/null || echo "MCP Hub not installed. Run: pip install -e /projects/sandbox/Claude-Opus5"
+}
+
+cmd_heal() {
+    python3 "$CLAUDE_OPUS5_DIR/opus5-power/heal.py" "${1:-all}" 2>/dev/null || echo "Self-heal not installed"
+}
+
+cmd_telemetry() {
+    python3 "$CLAUDE_OPUS5_DIR/opus5-power/telemetry.py" "${1:-status}" 2>/dev/null || echo "Telemetry not installed"
+}
+
+cmd_recommend() {
+    python3 "$CLAUDE_OPUS5_DIR/opus5-power/recommend.py" "${1:-status}" "${2:-}" 2>/dev/null || echo "Recommend not installed"
+}
+
+cmd_status() {
+    echo "🧠 SuperBrain Extreme Status"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Python: $(python3 --version)"
+    echo "Git: $(git --version)"
+    echo ""
+    echo "Installed Repositories:"
+    for repo in All-Skills Claude-Power Claude-Opus5 AIBrain ScrapeToolAi goaaiseo-seo-adapter goaaiseo; do
+        [ -d "/projects/sandbox/$repo/.git" ] && echo "  ✓ $repo" || echo "  ✗ $repo"
+    done
+    echo ""
+    echo "Skills: $(ls /projects/.kiro/skills 2>/dev/null | wc -l) installed"
+    echo "MCP Servers: $(ls /projects/.kiro/mcp-servers 2>/dev/null | wc -l) available"
+    [ -f "/projects/.kiro/steering/aibrain.md" ] && echo "AIBrain: ✓ Active" || echo "AIBrain: ✗ Not wired"
+}
+
+cmd_help() {
+    echo "USAGE: superbrain-extreme <command> [args]"
+    echo "COMMANDS: predict, clone, bootstrap, mcp, heal, telemetry, recommend, status, help"
+}
+
+COMMAND="${1:-help}"
+shift || true
+case "$COMMAND" in
+    predict|clone|bootstrap|mcp|heal|telemetry|recommend|status|help) cmd_$COMMAND "$@" ;;
+    *) echo "Unknown command: $COMMAND"; cmd_help; exit 1 ;;
+esac
