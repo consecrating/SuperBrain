@@ -59,10 +59,11 @@ clone_repo() {
     fi
 }
 
-echo "── 1/7 Cloning repositories ──"
+echo "── 1/8 Cloning repositories ──"
 clone_repo "All-Skills"              "consecrating/All-Skills"
 clone_repo "Claude-Power"            "consecrating/Claude-Power"
 clone_repo "Claude-Opus5"            "consecrating/Claude-Opus5"
+clone_repo "Prompt-Sweeper"          "consecrating/Prompt-Sweeper"
 clone_repo "AIBrain"                 "consecrating/AIBrain"
 clone_repo "ScrapeToolAi"           "consecrating/ScrapeToolAi"
 clone_repo "goaaiseo-seo-adapter"   "consecrating/goaaiseo-seo-adapter"
@@ -75,7 +76,7 @@ mkdir -p "$KIRO_DIR/skills" "$KIRO_DIR/steering" "$KIRO_DIR/scripts" "$KIRO_DIR/
 
 # ─── 3. Install All-Skills (44 skills) ──────────────────────────────────────
 
-echo "── 2/7 Installing All-Skills (44 design/UX/WP skills) ──"
+echo "── 2/8 Installing All-Skills (44 design/UX/WP skills) ──"
 if [ -x "$WORKSPACE/All-Skills/install.sh" ]; then
     KIRO_SKILLS_DIR="$KIRO_DIR/skills" bash "$WORKSPACE/All-Skills/install.sh" 2>&1 | tail -1
 else
@@ -86,7 +87,7 @@ echo ""
 
 # ─── 4. Install Claude-Power (17 engineering skills + steering + scripts + MCP) ────
 
-echo "── 3/7 Installing Claude-Power (17 engineering skills + MCP server) ──"
+echo "── 3/8 Installing Claude-Power (17 engineering skills + MCP server) ──"
 if [ -d "$WORKSPACE/Claude-Power/.kiro/skills" ]; then
     cp -r "$WORKSPACE/Claude-Power/.kiro/skills/"* "$KIRO_DIR/skills/" 2>/dev/null || true
     echo "  ✓ Skills merged"
@@ -107,7 +108,7 @@ echo ""
 
 # ─── 6. Install Claude-Opus5 (token-efficiency tools) ────────────────────────
 
-echo "── 4/7 Installing Claude-Opus5 (opus5-lean CLI) ──"
+echo "── 4/8 Installing Claude-Opus5 (opus5-lean CLI) ──"
 if python3 -c "from opus5lean import count_tokens" 2>/dev/null; then
     echo "  ✓ opus5-lean (already installed)"
 else
@@ -116,9 +117,19 @@ else
 fi
 echo ""
 
+# ─── 6b. Install Prompt-Sweeper (measured prompt selection) ──────────────────
+
+echo "── 5/8 Installing Prompt-Sweeper (measured prompt selection) ──"
+if [ -f "$WORKSPACE/Prompt-Sweeper/install.sh" ]; then
+    bash "$WORKSPACE/Prompt-Sweeper/install.sh" 2>&1 | grep -E "^  (ok|!!|--)" || true
+else
+    echo "  !!  Prompt-Sweeper/install.sh missing"
+fi
+echo ""
+
 # ─── 7. Install AIBrain (intelligence layer) ─────────────────────────────────
 
-echo "── 5/7 Installing AIBrain (intelligence layer) ──"
+echo "── 6/8 Installing AIBrain (intelligence layer) ──"
 if [ -x "$WORKSPACE/AIBrain/scripts/install.sh" ]; then
     bash "$WORKSPACE/AIBrain/scripts/install.sh" 2>&1 | grep -E "^(✓|✅|⚠️)" || true
 else
@@ -135,7 +146,7 @@ echo ""
 
 # ─── 6. Install Python packages ──────────────────────────────────────────────
 
-echo "── 6/7 Installing Python packages ──"
+echo "── 7/8 Installing Python packages ──"
 if python3 -c "import scrapetoolai" 2>/dev/null; then
     echo "  ✓ scrapetoolai (already installed)"
 else
@@ -153,7 +164,7 @@ echo ""
 
 # ─── 7. Install SuperBrain steering (overwrites workspace-repos) ─────────────
 
-echo "── 7/7 Installing SuperBrain steering ──"
+echo "── 8/8 Installing SuperBrain steering ──"
 cp "$SUPERBRAIN_DIR/.kiro/steering/superbrain.md" "$KIRO_DIR/steering/" 2>/dev/null || true
 cp -r "$SUPERBRAIN_DIR/.kiro/skills/superbrain" "$KIRO_DIR/skills/" 2>/dev/null || true
 echo "  ✓ SuperBrain steering + skill installed"
@@ -203,7 +214,7 @@ echo "── Verifying installation ──"
 ERRORS=0
 
 # Check repos exist
-for repo in All-Skills Claude-Power Claude-Opus5 AIBrain ScrapeToolAi goaaiseo-seo-adapter goaaiseo; do
+for repo in All-Skills Claude-Power Claude-Opus5 Prompt-Sweeper AIBrain ScrapeToolAi goaaiseo-seo-adapter goaaiseo; do
     if [ -d "$WORKSPACE/$repo/.git" ]; then
         printf "  ✓ %-25s cloned\n" "$repo"
     else
@@ -231,6 +242,12 @@ else
     echo "  ✗ opus5-lean                FAILED"
     ERRORS=$((ERRORS + 1))
 fi
+if python3 -c "import promptsweeper" 2>/dev/null; then
+    echo "  ✓ promptsweeper             importable"
+else
+    echo "  ✗ promptsweeper             FAILED"
+    ERRORS=$((ERRORS + 1))
+fi
 
 # Check CLIs
 if command -v gsa >/dev/null 2>&1; then
@@ -251,6 +268,12 @@ else
     echo "  ✗ opus5-lean CLI            MISSING"
     ERRORS=$((ERRORS + 1))
 fi
+if command -v prompt-sweep >/dev/null 2>&1; then
+    echo "  ✓ prompt-sweep CLI          available"
+else
+    echo "  ✗ prompt-sweep CLI          MISSING"
+    ERRORS=$((ERRORS + 1))
+fi
 
 # Check skills
 SKILL_COUNT=$(ls "$KIRO_DIR/skills" 2>/dev/null | wc -l)
@@ -265,6 +288,17 @@ if [ -f "$KIRO_DIR/mcp-servers/opus5-lean/server.json" ]; then
     echo "  ✓ opus5-lean MCP server     installed"
 else
     echo "  ⚠ opus5-lean MCP server     missing"
+fi
+if [ -f "$KIRO_DIR/mcp-servers/prompt-sweeper/server.json" ]; then
+    echo "  ✓ prompt-sweeper MCP server installed"
+else
+    echo "  ⚠ prompt-sweeper MCP server missing"
+fi
+if [ -f "$KIRO_DIR/skills/prompt-sweeper/SKILL.md" ]; then
+    echo "  ✓ prompt-sweeper skill      active"
+else
+    echo "  ✗ prompt-sweeper skill      MISSING"
+    ERRORS=$((ERRORS + 1))
 fi
 
 # Check AIBrain
@@ -291,11 +325,11 @@ if [ "$ERRORS" -eq 0 ]; then
     echo "║  ✅ SUPERBRAIN BOOTSTRAP COMPLETE                               ║"
     echo "╠══════════════════════════════════════════════════════════════════╣"
     echo "║                                                                  ║"
-    echo "║  Repos:    7 cloned & connected                                  ║"
+    echo "║  Repos:    8 cloned & connected                                  ║"
     echo "║  Skills:   $SKILL_COUNT active (design + engineering + brain)          ║"
-    echo "║  MCP:      opus5-lean (token-efficiency tools)                   ║"
-    echo "║  Packages: scrapetoolai + gsa + opus5-lean                       ║"
-    echo "║  CLIs:     scrapetool, gsa, opus5-lean                           ║"
+    echo "║  MCP:      opus5-lean, prompt-sweeper                            ║"
+    echo "║  Packages: scrapetoolai + gsa + opus5-lean + promptsweeper       ║"
+    echo "║  CLIs:     scrapetool, gsa, opus5-lean, prompt-sweep             ║"
     echo "║  Brain:    AIBrain persistent intelligence active                ║"
     echo "║  Env:      All variables set (source .env to reload)             ║"
     echo "║                                                                  ║"

@@ -1,11 +1,10 @@
 {
   "name": "SuperBrain",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Auto-bootstrap manifest — declares all repos, install order, and verification checks.",
   "author": "consecrating",
   "workspace": "/projects/sandbox",
   "python": "/root/.pyenv/versions/3.11.15/bin",
-
   "repositories": [
     {
       "name": "All-Skills",
@@ -32,12 +31,20 @@
       "priority": 2
     },
     {
+      "name": "Prompt-Sweeper",
+      "github": "consecrating/Prompt-Sweeper",
+      "purpose": "Measured prompt selection — generate variants, grade them, keep the cheapest that holds quality",
+      "install": "bash install.sh",
+      "verify": "python3 -c 'import promptsweeper' 2>/dev/null && test -f /projects/.kiro/skills/prompt-sweeper/SKILL.md",
+      "priority": 3
+    },
+    {
       "name": "AIBrain",
       "github": "consecrating/AIBrain",
       "purpose": "Persistent intelligence layer — memory, patterns, stack, self-healing",
       "install": "bash scripts/install.sh",
       "verify": "test -f /projects/.kiro/skills/aibrain/SKILL.md && test -f /projects/.kiro/steering/aibrain.md",
-      "priority": 3
+      "priority": 4
     },
     {
       "name": "ScrapeToolAi",
@@ -45,7 +52,7 @@
       "purpose": "Stealth web scraping framework + AI extraction + MCP server",
       "install": "pip install -e .",
       "verify": "python3 -c 'import scrapetoolai' 2>/dev/null",
-      "priority": 4
+      "priority": 5
     },
     {
       "name": "goaaiseo-seo-adapter",
@@ -53,7 +60,7 @@
       "purpose": "Integration adapter: claude-seo → GOAAISEO graph model",
       "install": "pip install -e .",
       "verify": "python3 -c 'from gsa import models, normalize' 2>/dev/null",
-      "priority": 5
+      "priority": 6
     },
     {
       "name": "goaaiseo",
@@ -61,10 +68,9 @@
       "purpose": "Autonomous SEO Operating System (blueprint/architecture)",
       "install": "echo 'Blueprint repo — no install needed'",
       "verify": "test -d docs/blueprint",
-      "priority": 6
+      "priority": 7
     }
   ],
-
   "environment": {
     "PATH_PREFIX": "/root/.pyenv/versions/3.11.15/bin",
     "GOAAISEO_ROOT": "/projects/sandbox/goaaiseo",
@@ -78,7 +84,6 @@
     "KIRO_MCP_SERVERS": "/projects/.kiro/mcp-servers",
     "AIBRAIN_ROOT": "/projects/sandbox/AIBrain"
   },
-
   "post_install": [
     "chmod +x /projects/.kiro/scripts/*.sh 2>/dev/null || true",
     "find /projects/.kiro/skills -name '*.sh' -exec chmod +x {} \\; 2>/dev/null || true",
@@ -86,10 +91,11 @@
     "mkdir -p /projects/sandbox/goaaiseo-seo-adapter/out",
     "mkdir -p /projects/sandbox/ScrapeToolAi/output /projects/sandbox/ScrapeToolAi/imports"
   ],
-
   "verify": [
     "test $(ls /projects/.kiro/skills | wc -l) -ge 50",
     "test -f /projects/.kiro/mcp-servers/opus5-lean/server.json",
-    "python3 -c 'from opus5lean import count_tokens' 2>/dev/null"
+    "test -f /projects/.kiro/skills/prompt-sweeper/SKILL.md",
+    "python3 -c 'from opus5lean import count_tokens' 2>/dev/null",
+    "python3 -c 'import promptsweeper' 2>/dev/null"
   ]
 }
