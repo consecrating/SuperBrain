@@ -188,7 +188,7 @@ Connect SuperBrain → start working.
 | Repo | GitHub | What |
 |------|--------|------|
 | All-Skills | consecrating/All-Skills | 44 Kiro skills (design/UX/WP) |
-| Claude-Power | consecrating/Claude-Power | 17 Kiro skills (engineering) + MCP server |
+| Claude-Power | consecrating/Claude-Power | 17 Kiro skills (engineering) + real Opus 5 MCP power |
 | Claude-Opus5 | consecrating/Claude-Opus5 | Token-efficiency tools (opus5-lean CLI) |
 | AIBrain | consecrating/AIBrain | Persistent intelligence layer |
 | ScrapeToolAi | consecrating/ScrapeToolAi | Web scraping framework |
